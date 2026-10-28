@@ -63,11 +63,17 @@ export const GAMES = {
 const CORE = (f) => [
   { id: `${f}-stair1`, name: "계단", rect: [6.6, 9.9, 0, 6.4], kind: "stairs", doors: [{ side: "s", at: 8.25, w: 1.8 }], noDex: true },
   { id: `${f}-elev`, name: "엘리베이터", rect: [9.9, 12.4, 0, 3.2], kind: "elevator", solid: true, doors: [{ side: "s", at: 11.15 }], noDex: true },
-  { id: `${f}-wcm`, name: "화장실(남)", rect: [12.4, 17, 0, 6.4], kind: "toilet", solid: true, doors: [{ side: "s", at: 14.7 }], noDex: true, sign: "남" },
-  { id: `${f}-wcf`, name: "화장실(여)", rect: [17, 21.9, 0, 6.4], kind: "toilet", solid: true, doors: [{ side: "s", at: 19.45 }], noDex: true, sign: "여" },
+  { id: `${f}-wcm`, name: "화장실(남)", rect: [12.4, 15.6, 0, 4.2], kind: "toilet", solid: true, doors: [{ side: "s", at: 14 }], noDex: true, sign: "남" },
+  { id: `${f}-wcf`, name: "화장실(여)", rect: [15.6, 18.8, 0, 4.2], kind: "toilet", solid: true, doors: [{ side: "s", at: 17.2 }], noDex: true, sign: "여" },
+  { id: `${f}-ehall`, name: "엘리베이터 홀", rects: [[18.8, 21.9, 0, 6.4], [9.9, 12.4, 3.2, 6.4], [12.4, 18.8, 4.2, 6.4]], kind: "ehall", open: true, noDex: true, floor: "tile" },
   { id: `${f}-stair2`, name: "계단", rect: [25.4, 28.8, 0, 6.4], kind: "stairs", doors: [{ side: "s", at: 27.1, w: 1.8 }], noDex: true },
 ];
 const WEST_ELEV = { x: 11.15, z: 4.3, face: Math.PI };
+const WATER_LINES = ["꿀꺽꿀꺽! 시원하다~ 탐험 에너지 충전 완료!", "물을 세 컵이나 마셨더니… 화장실이 바로 옆이라 다행이에요!", "정수기 옆 쪽지: '종이컵 대신 내 텀블러 쓰기!'"];
+const CORE_GAGS = () => [
+  { kind: "toilet", pos: [14, 5.0] }, { kind: "toilet", pos: [17.2, 5.0] },
+  { kind: "text", pos: [20.35, 1.3], r: 1.5, label: "정수기", verb: "물 마시기", lines: WATER_LINES },
+];
 
 export const SCENES = {
   w1: {
@@ -111,7 +117,7 @@ export const SCENES = {
         lines: ["쿨쿨… zZ", "…(실눈을 뜨고) 책은 제자리에 꽂아 달라옹.", "냐옹. 책 반납은 내일 해도 된다옹… zZ"] },
     ],
     gags: [
-      { kind: "toilet", pos: [14.7, 7.0] }, { kind: "toilet", pos: [19.45, 7.0] },
+      ...CORE_GAGS(),
       { kind: "text", pos: [4.4, 11.7], r: 1.8, label: "통신 장비", verb: "살펴보기", lines: ["쉿! 와이파이가 자는 중이에요… zZ", "초록 불이 깜빡깜빡. 인터넷이 열심히 달리는 중이래요!", "케이블이 엄청 많아요. 이걸 다 이으면 순창에서 서울까지…는 아니에요."] },
       { kind: "text", pos: [23.65, 1.4], r: 1.8, label: "회의 화이트보드", verb: "읽기", lines: ["오늘의 안건: ① 축제 때 뭐 하지? ② 급식에 떡볶이 넣어 주세요 ③ 회의 끝나고 치킨?", "회의 규칙: 끝까지 듣기, 손 들고 말하기, 졸지 않기(특히 김쌤)."] },
       { kind: "text", pos: [11.9, 11.6], r: 1.7, label: "전시 작품", verb: "감상하기", lines: ["작품명 「고추장 공룡」. 만든 사람: 순창 어린이. 설명: 매운 걸 먹으면 불을 뿜어요.", "작품명 「미래의 자치배움터」. 지붕에 미끄럼틀이 달려 있어요.", "작품명 「급식 떡볶이 탑」. 높이 3미터. 맛은 비밀."] },
@@ -156,7 +162,7 @@ export const SCENES = {
         lines: ["……", "(마네킹이에요. 대답이 없어요.)", "……(방금 눈 깜빡인 것 같은데?)"] },
     ],
     gags: [
-      { kind: "toilet", pos: [14.7, 7.0] }, { kind: "toilet", pos: [19.45, 7.0] },
+      ...CORE_GAGS(),
       { kind: "mirror", pos: [1.0, 7.9], r: 1.5, label: "분장실 거울", verb: "들여다보기" },
       { kind: "ghost", pos: [3.4, 10.1], r: 1.5, label: "촬영 카메라", verb: "녹화 버튼 누르기" },
     ],
@@ -202,7 +208,7 @@ export const SCENES = {
         lines: ["3층은 공부하는 층이야. 근데 교육홀에서 노는 게 제일 재밌어.", "외부 휴게공간 가 봤어? 바람이 시원해!", "냉장고에 코끼리를 넣는 방법은? 문 열고, 넣고, 닫으면 끝! …발명 끝!"] },
     ],
     gags: [
-      { kind: "toilet", pos: [14.7, 7.0] }, { kind: "toilet", pos: [19.45, 7.0] },
+      ...CORE_GAGS(),
       { kind: "text", pos: [33.2, 2.2], r: 1.6, label: "3D 프린터", verb: "들여다보기", lines: ["위잉… 3D 프린터가 무언가를 만들고 있어요. 완성! …치킨 모양 지우개?!", "위잉… 이번엔 미니 자치배움터 모형이에요. 완전 똑같아요!", "위잉… 실패! 스파게티처럼 엉켰어요. 괜찮아요, 다시 하면 돼요."] },
       { kind: "text", pos: [16.3, 13.2], r: 1.6, label: "발명 아이디어 상자", verb: "열어 보기", lines: ["아이디어 1: 자동으로 숙제해 주는 연필 (선생님 반대로 기각)", "아이디어 2: 비 오면 저절로 펴지는 가방 우산", "아이디어 3: 고추장 맛 치약 (모두가 반대함)"] },
     ],
@@ -236,7 +242,7 @@ export const SCENES = {
         lines: ["여기서 보면 순창이 다 보여! 저쪽이 강천산 방향이래.", "망원경 봤어? 가끔 이상한 게 보인대…", "밤에 오면 별이 쏟아진대. 그래서 내 이름이 별이야. …진짜야."] },
     ],
     gags: [
-      { kind: "toilet", pos: [14.7, 7.0] }, { kind: "toilet", pos: [19.45, 7.0] },
+      ...CORE_GAGS(),
       { kind: "hat", pos: [24.6, 1.4], r: 1.6, label: "의상 옷걸이", verb: "모자 써 보기" },
       { kind: "text", pos: [27.4, 12.2], r: 1.6, label: "망원경", verb: "들여다보기", lines: ["저 멀리 강천산이 보여요! 단풍이 울긋불긋해요.", "어? 하늘에 UFO가?! …아, 비둘기네요.", "저기 롤러장 지붕에 태양광 패널이 반짝여요."] },
       { kind: "text", pos: [3.2, 15.5], r: 2.2, label: "스크린", verb: "영화 보기", lines: ["상영 중: 「레고 밟은 날」 — 주인공이 레고를 밟고 하늘로 날아올라요. 관객 모두 '아야!'", "상영 중: 「급식실의 비밀」 — 오늘 떡볶이가 나온다는 소문은 사실이었다!", "상영 중: 「투명인간 크로마키」 — 초록 옷을 입은 주인공이 사라졌어요!"] },
@@ -252,8 +258,9 @@ export const SCENES = {
         desc: "롤러장에 음악과 안내 방송을 내보내는 방이에요." },
       { id: "e1-locker", name: "스케이트보관소", rect: [3.8, 11.2, 0, 8], kind: "skateLocker", doors: [{ side: "s", at: 7.5, w: 1.6 }], floor: "tile", color: "#2fb2ff", quiz: "e1-locker",
         desc: "롤러스케이트를 보관하는 선반이 줄지어 있어요." },
-      { id: "e1-wcm", name: "화장실(남)", rect: [11.2, 16.6, 0, 8], kind: "toilet", solid: true, doors: [{ side: "s", at: 13.9 }], noDex: true, sign: "남" },
-      { id: "e1-wcf", name: "화장실(여)", rect: [16.6, 22.2, 0, 8], kind: "toilet", solid: true, doors: [{ side: "s", at: 19.4 }], noDex: true, sign: "여" },
+      { id: "e1-wcm", name: "화장실(남)", rect: [11.2, 15.2, 0, 5.2], kind: "toilet", solid: true, doors: [{ side: "s", at: 13.2 }], noDex: true, sign: "남" },
+      { id: "e1-wcf", name: "화장실(여)", rect: [15.2, 19.2, 0, 5.2], kind: "toilet", solid: true, doors: [{ side: "s", at: 17.2 }], noDex: true, sign: "여" },
+      { id: "e1-rest", name: "쉼터", rects: [[19.2, 22.2, 0, 8], [11.2, 19.2, 5.2, 8]], kind: "ehall", open: true, noDex: true, floor: "tile" },
       { id: "e1-shop", name: "매점", rect: [0, 4.2, 20, 24.6], kind: "shop", doors: [{ side: "e", at: 22.3, w: 1.6 }], floor: "tile", color: "#ff7a1a",
         desc: "간식과 음료를 파는 작은 가게예요. 롤러 타고 나서 시원한 음료 한 잔!" },
       { id: "e1-elev", name: "엘리베이터", rect: [0, 3, 24.6, 27.4], kind: "elevator", solid: true, doors: [{ side: "e", at: 26 }], noDex: true },
@@ -279,7 +286,8 @@ export const SCENES = {
         lines: ["어서 와! 오늘은 바나나우유 1+1이야!", "…근데 너 돈 있니? 없구나. 괜찮아, 구경은 공짜야!", "롤러 타고 나면 꼭 물 마시렴. 물은 공짜란다!"] },
     ],
     gags: [
-      { kind: "toilet", pos: [13.9, 8.6] }, { kind: "toilet", pos: [19.4, 8.6] },
+      { kind: "toilet", pos: [13.2, 5.9] }, { kind: "toilet", pos: [17.2, 5.9] },
+      { kind: "text", pos: [20.7, 1.3], r: 1.5, label: "정수기", verb: "물 마시기", lines: WATER_LINES },
       { kind: "mic", pos: [1.4, 2.2], r: 1.5, label: "방송 마이크", verb: "방송하기" },
       { kind: "text", pos: [7.5, 2.0], r: 1.8, label: "사물함", verb: "열어 보기", lines: ["사물함을 열었더니… 짝짝이 양말 한 짝이!", "사물함 안에 쪽지가 있어요. '레이스에서 할아버지 이기는 법: 안쪽 코스로 달려라.'", "스케이트 한 켤레가 가지런히 놓여 있어요. 사이즈 300… 누구 발이지?"] },
     ],

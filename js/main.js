@@ -82,13 +82,15 @@ const cm = (a, b, friction, restitution) => world.addContactMaterial(new CANNON.
 cm(matPlayer, matGround, 0, 0); cm(matPlayer, matCrate, 0, 0); cm(matPlayer, matBall, 0, 0.3);
 cm(matBall, matGround, 0.4, 0.5); cm(matCrate, matGround, 0.5, 0.05); cm(matCrate, matCrate, 0.5, 0.05); cm(matBall, matCrate, 0.3, 0.4);
 {
-  const g = new CANNON.Body({ mass: 0, material: matGround, shape: new CANNON.Plane() });
-  g.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+  // 바닥은 납작한 큰 상자예요. 고정된 물체는 옮긴 뒤 경계 상자를 다시 계산해야 발밑 검사 광선이 찾을 수 있어요.
+  const g = new CANNON.Body({ mass: 0, material: matGround, shape: new CANNON.Box(new CANNON.Vec3(400, 0.5, 400)) });
+  g.position.set(0, -0.5, 0);
+  g.updateAABB();
   world.addBody(g);
 }
 const pBody = new CANNON.Body({ mass: 5, material: matPlayer, fixedRotation: true, allowSleep: false, linearDamping: 0 });
-pBody.addShape(new CANNON.Sphere(0.38), new CANNON.Vec3(0, 0.38, 0));
-pBody.addShape(new CANNON.Sphere(0.38), new CANNON.Vec3(0, 1.05, 0));
+pBody.addShape(new CANNON.Sphere(0.3), new CANNON.Vec3(0, 0.3, 0));
+pBody.addShape(new CANNON.Sphere(0.3), new CANNON.Vec3(0, 0.82, 0));
 pBody.collisionFilterGroup = 2;
 pBody.updateMassProperties();
 world.addBody(pBody);
@@ -147,14 +149,13 @@ function getScene(id) {
     ctx.def = def;
     ctx.indoor = true;
     for (const e of def.exits || []) if (e.to) { const p = exitPoint(def, e); ctx.interact.push({ kind: "door", x: p.x, z: p.z, r: 1.8, label: e.label, verb: e.verb, to: e.to, spawn: e.spawn }); }
-    if (def.elevator) ctx.interact.push({ kind: "elev", x: def.elevator.x, z: def.elevator.z, r: 1.7, label: "엘리베이터", verb: "층 이동" });
-    for (const s of ctx.special.stairs || []) ctx.interact.push({ kind: "elev", x: s.x, z: s.z, r: 1.7, label: "계단", verb: "층 이동" });
+    for (const w of ctx.warps) ctx.interact.push({ kind: "elev", x: w.x, z: w.z, r: 1.7, label: w.label, verb: "층 이동" });
     for (const g of def.gags || []) addGag(ctx, g);
     if (ctx.special.goal) {
       const g = ctx.special.goal;
       ctx.special.pball = B.makeBall(ctx, opts, g.cx + 2.5, g.spot + 2);
-      const kb = new CANNON.Body({ mass: 0, type: CANNON.Body.KINEMATIC, shape: new CANNON.Box(new CANNON.Vec3(0.55, 1.05, 0.3)) });
-      kb.position.set(g.cx, 1.05, g.z + 0.6);
+      const kb = new CANNON.Body({ mass: 0, type: CANNON.Body.KINEMATIC, shape: new CANNON.Box(new CANNON.Vec3(0.5, 0.8, 0.3)) });
+      kb.position.set(g.cx, 0.8, g.z + 0.6);
       ctx.bodies.push(kb);
       ctx.special.keeperBody = kb;
     }
@@ -176,20 +177,28 @@ async function enterScene(id, spawnKey, instant) {
     for (const b of S.cur.bodies) world.removeBody(b);
     for (const n of S.cur.npcs) n.tag.style.opacity = 0;
   }
+  const from = { x: pBody.position.x, z: pBody.position.z };
   const ctx = getScene(id);
   S.cur = ctx; S.sceneId = id;
   scene.add(ctx.group);
   for (const b of ctx.bodies) world.addBody(b);
-  const sp = ctx.def.spawns[spawnKey] || ctx.def.spawns.elevator || Object.values(ctx.def.spawns)[0];
+  let sp = ctx.def.spawns[spawnKey];
+  if (!sp && spawnKey === "stairs" && ctx.warps) {
+    // 계단으로 왔으면 같은 자리의 계단에서 나타나요
+    const st = ctx.warps.filter((w) => w.label === "계단").sort((a, b) => Math.hypot(a.x - from.x, a.z - from.z) - Math.hypot(b.x - from.x, b.z - from.z))[0];
+    if (st) sp = st;
+  }
+  sp = sp || ctx.def.spawns.elevator || Object.values(ctx.def.spawns)[0];
+  S.warpArmed = false;
   S.lastSpawn = { id, key: spawnKey };
   pBody.position.set(sp.x, 0.08, sp.z);
   pBody.velocity.set(0, 0, 0);
   player.face = sp.face;
   cam.yaw = sp.face + Math.PI;
   cam.pitch = ctx.indoor ? 0.9 : 0.42;
-  cam.dist = ctx.indoor ? 12 : 10;
+  cam.dist = ctx.indoor ? 10.5 : 8.5;
   cam.cur = cam.dist;
-  cam.target.set(sp.x, 1.5, sp.z);
+  cam.target.set(sp.x, 1.15, sp.z);
   scene.fog.near = ctx.indoor ? 50 : 70;
   scene.fog.far = ctx.indoor ? 170 : 230;
   S.room = null;
@@ -422,7 +431,7 @@ function openElevator(kind) {
     closeModal();
     Snd.ding();
     toast(pick(ELEVATOR_LINES));
-    enterScene(b.dataset.to, "elevator");
+    enterScene(b.dataset.to, kind === "계단" ? "stairs" : "elevator");
   }));
   openModal("elev");
 }
@@ -505,7 +514,7 @@ function drawMap() {
   for (const it of ctx.interact) {
     const icon = it.kind === "quiz" ? (save.quizzes.includes(it.id) ? "✓" : "?") : it.kind === "game" ? "★" : it.kind === "door" ? "문" : it.kind === "elev" ? (it.label === "계단" ? "계" : "E") : null;
     if (!icon) continue;
-    const col = it.kind === "quiz" ? "#ffb800" : it.kind === "game" ? "#ff4fa3" : it.kind === "door" ? "#ff4fa3" : "#64748b";
+    const col = it.kind === "quiz" ? "#ffb800" : it.kind === "game" ? "#ff4fa3" : it.kind === "door" ? "#ff4fa3" : "#0b8fd0";
     x.fillStyle = col; x.beginPath(); x.arc(X(it.x), Z(it.z), 9, 0, 7); x.fill();
     label(icon, X(it.x), Z(it.z) + 1, 11, "#ffffff");
   }
@@ -692,7 +701,7 @@ function updatePenalty(dt) {
   const prev = sp.kx;
   if (sp.phase === "fly") sp.kx += clamp(sp.kTarget - sp.kx, -6 * dt, 6 * dt);
   else sp.kx = g.cx + Math.sin(S.T * 1.7) * 0.45;
-  kb.position.set(sp.kx, 1.05, g.z + 0.55);
+  kb.position.set(sp.kx, 0.8, g.z + 0.55);
   kb.velocity.set((sp.kx - prev) / Math.max(dt, 1e-3), 0, 0);
   if (sp.keeper) { sp.keeper.pos.set(sp.kx, 0, g.z + 0.55); sp.keeper.face = 0; sp.keeper.moving = sp.phase === "fly" ? 0.6 : 0.2; }
   if (sp.phase === "fly" && !sp.judged) {
@@ -701,8 +710,8 @@ function updatePenalty(dt) {
     if (goal || sp.t > 2.6 || stopped) {
       sp.judged = true;
       sp.shot++;
-      if (goal) { sp.goals++; Snd.goal(); confetti(30); $("#spBig").textContent = "골!!!"; if (sp.keeper) say(new THREE.Vector3(sp.kx, 2.6, g.z + 0.6), pick(["으아악! 눈 감고 있었는데!", "공이 너무 빨라!", "거미손이 뚫렸다!"]), "골대지기"); }
-      else { Snd.no(); $("#spBig").textContent = Math.abs(b.position.x - g.cx) > g.half + 0.3 || b.position.y > 2.2 ? "아깝다!" : "막았다!"; if (sp.keeper) say(new THREE.Vector3(sp.kx, 2.6, g.z + 0.6), pick(["순창의 거미손이 막았다!", "흐흐, 내 손은 고추장보다 끈끈하지!", "다음엔 반대쪽으로 차 봐!"]), "골대지기"); }
+      if (goal) { sp.goals++; Snd.goal(); confetti(30); $("#spBig").textContent = "골!!!"; if (sp.keeper) say(new THREE.Vector3(sp.kx, 2.2, g.z + 0.6), pick(["으아악! 눈 감고 있었는데!", "공이 너무 빨라!", "거미손이 뚫렸다!"]), "골대지기"); }
+      else { Snd.no(); $("#spBig").textContent = Math.abs(b.position.x - g.cx) > g.half + 0.3 || b.position.y > 2.2 ? "아깝다!" : "막았다!"; if (sp.keeper) say(new THREE.Vector3(sp.kx, 2.2, g.z + 0.6), pick(["순창의 거미손이 막았다!", "흐흐, 내 손은 고추장보다 끈끈하지!", "다음엔 반대쪽으로 차 봐!"]), "골대지기"); }
       setTimeout(() => {
         if (S.sport !== sp) return;
         $("#spBig").textContent = "";
@@ -728,7 +737,7 @@ function stopSport() {
   showMarkers(true);
   sportUI.hidden = true;
   $("#spBig").textContent = "";
-  if (S.cur) { cam.pitch = S.cur.indoor ? 0.9 : 0.42; cam.dist = S.cur.indoor ? 12 : 10; }
+  if (S.cur) { cam.pitch = S.cur.indoor ? 0.9 : 0.42; cam.dist = S.cur.indoor ? 10.5 : 8.5; }
 }
 
 // ---------- input ----------
@@ -794,7 +803,7 @@ addEventListener("pointermove", (e) => {
   if (pinch.has(e.pointerId)) {
     const prev = pinch.get(e.pointerId);
     pinch.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pinch.size === 2) { const [a, b] = [...pinch.values()], d = Math.hypot(a.x - b.x, a.y - b.y), pd = pinch.pd || d; cam.dist = clamp(cam.dist * (pd / d), 5, 18); pinch.pd = d; return; }
+    if (pinch.size === 2) { const [a, b] = [...pinch.values()], d = Math.hypot(a.x - b.x, a.y - b.y), pd = pinch.pd || d; cam.dist = clamp(cam.dist * (pd / d), 4, 16); pinch.pd = d; return; }
     void prev;
   }
   if (e.pointerId !== drag.id) return;
@@ -807,7 +816,7 @@ addEventListener("pointermove", (e) => {
 const endPtr = (e) => { if (e.pointerId === JOY.id) joyEnd(); if (e.pointerId === drag.id) drag.id = null; pinch.delete(e.pointerId); if (pinch.size < 2) pinch.pd = 0; };
 addEventListener("pointerup", endPtr);
 addEventListener("pointercancel", endPtr);
-cv.addEventListener("wheel", (e) => { if (S.mode !== "play" || S.modal) return; e.preventDefault(); cam.dist = clamp(cam.dist * (1 + e.deltaY * 0.001), 5, 18); }, { passive: false });
+cv.addEventListener("wheel", (e) => { if (S.mode !== "play" || S.modal) return; e.preventDefault(); cam.dist = clamp(cam.dist * (1 + e.deltaY * 0.001), 4, 16); }, { passive: false });
 function holdBtn(el, down) {
   el.addEventListener("pointerdown", (e) => { e.preventDefault(); el.classList.add("held"); down(); });
   const up = () => el.classList.remove("held");
@@ -865,10 +874,10 @@ function updateCamera(dt) {
     return;
   }
   const p = pBody.position;
-  let tx = p.x, tz = p.z, ty = p.y + 1.5, dist = cam.dist;
+  let tx = p.x, tz = p.z, ty = p.y + 1.15, dist = cam.dist;
   if (S.talk && S.talk.npc) {
     const n = S.talk.npc.pos, dx = n.x - p.x, dz = n.z - p.z, dl = Math.hypot(dx, dz) || 1, ux = dx / dl, uz = dz / dl;
-    tx = (p.x + n.x) / 2; tz = (p.z + n.z) / 2; dist = Math.min(cam.dist, 8);
+    tx = (p.x + n.x) / 2; tz = (p.z + n.z) / 2; dist = Math.min(cam.dist, 6.5);
     const off = (a) => Math.abs(Math.atan2(Math.sin(a - cam.yaw), Math.cos(a - cam.yaw)));
     const [a, b] = [[-uz, ux], [uz, -ux]].map(([px, pz]) => Math.atan2(px - ux * 0.7, pz - uz * 0.7));
     cam.yaw = angDamp(cam.yaw, off(a) <= off(b) ? a : b, 2.5, dt);
@@ -894,7 +903,7 @@ function updateCamera(dt) {
   for (const m of faded) m.material = m.userData.orig;
   faded = [];
   if (S.cur.indoor) {
-    for (const hy of [0.5, 1.6]) {
+    for (const hy of [0.4, 1.2]) {
       _head.set(p.x, p.y + hy, p.z);
       _dir.subVectors(_head, camera.position);
       const d = _dir.length();
@@ -906,7 +915,7 @@ function updateCamera(dt) {
 
 // ---------- player ----------
 const _from = new CANNON.Vec3(), _to = new CANNON.Vec3(), _rr = new CANNON.RaycastResult();
-const RAY_OFF = [[0, 0], [0.24, 0], [-0.24, 0], [0, 0.24], [0, -0.24]];
+const RAY_OFF = [[0, 0], [0.2, 0], [-0.2, 0], [0, 0.2], [0, -0.2]];
 function onGround() {
   const p = pBody.position;
   for (const [ox, oz] of RAY_OFF) {
@@ -919,7 +928,7 @@ function onGround() {
 }
 function controlPlayer(dt, active) {
   const racing = S.sport && S.sport.type === "race";
-  const SPEED = racing ? 10.5 : 6.2;
+  const SPEED = racing ? 10.5 : 5.6;
   const g = onGround() && pBody.velocity.y < 2.5;
   player.grounded = g;
   player.coyote = g ? 0.12 : player.coyote - dt;
@@ -939,7 +948,7 @@ function controlPlayer(dt, active) {
   if (Math.hypot(dx, dz) > 0.08) player.face = angDamp(player.face, Math.atan2(dx, dz), 12, dt);
   else if (S.talk && S.talk.npc) player.face = angDamp(player.face, Math.atan2(S.talk.npc.pos.x - pBody.position.x, S.talk.npc.pos.z - pBody.position.z), 8, dt);
   if (active && player.jumpBuf > 0 && player.coyote > 0) { pBody.velocity.y = 10.5; player.jumpBuf = 0; player.coyote = 0; Snd.jump(); }
-  player.moveAmt = damp(player.moveAmt, Math.min(1, Math.hypot(pBody.velocity.x, pBody.velocity.z) / 6.2), 10, dt);
+  player.moveAmt = damp(player.moveAmt, Math.min(1, Math.hypot(pBody.velocity.x, pBody.velocity.z) / 5.6), 10, dt);
 }
 
 // ---------- NPCs ----------
@@ -1006,7 +1015,7 @@ function triggers(dt) {
     const [x0, x1, z0, z1] = ctx.legoRect;
     if (p.x > x0 && p.x < x1 && p.z > z0 && p.z < z1 && Math.random() < dt * 1.2) {
       S.legoCD = 9; Snd.ouch(); pBody.velocity.y = 6.5;
-      startTalk({ name: playerName(), lines: [pick(LEGO_LINES)], anchor: () => _anchor.set(pBody.position.x, pBody.position.y + 2.7, pBody.position.z), gag: true });
+      startTalk({ name: playerName(), lines: [pick(LEGO_LINES)], anchor: () => _anchor.set(pBody.position.x, pBody.position.y + 2.1, pBody.position.z), gag: true });
     }
   }
   const bell = ctx.special.bell;
@@ -1022,6 +1031,13 @@ function triggers(dt) {
     toast("점프 블록 꼭대기의 별을 얻었어요!", 3200);
   }
   if (S.invisT > 0) { S.invisT -= dt; if (S.invisT <= 0) { setInvisible(false); toast("짠! 다시 보여요."); } }
+  // 워프 발판: 한 번 벗어났다가 다시 밟으면 층 이동 창이 열려요
+  if (ctx.warps && ctx.warps.length && !S.modal && !S.busy && !S.talk && !S.sport) {
+    let best = null, bd = Infinity;
+    for (const w of ctx.warps) { const d = Math.hypot(p.x - w.x, p.z - w.z); if (d < bd) { bd = d; best = w; } }
+    if (bd > 1.9) S.warpArmed = true;
+    else if (S.warpArmed && bd < 0.8 && player.grounded) { S.warpArmed = false; Snd.whoosh(); openElevator(best.label); }
+  }
 }
 
 // ---------- title & flow ----------
@@ -1048,7 +1064,7 @@ async function startPlay() {
   updateHUD();
   const resume = save.scene && (save.scene === "outdoor" || SCENES[save.scene]) && save.rooms.length;
   if (resume && save.scene !== "outdoor") await enterScene(save.scene, save.spawn || "elevator");
-  else { banner("창의교육마당"); if (S.sceneId !== "outdoor") await enterScene("outdoor", "start"); else { const s = OUTDOOR.spawns.start; pBody.position.set(s.x, 0.08, s.z); player.face = s.face; cam.yaw = s.face + Math.PI; cam.target.set(s.x, 1.5, s.z); } }
+  else { banner("창의교육마당"); if (S.sceneId !== "outdoor") await enterScene("outdoor", "start"); else { const s = OUTDOOR.spawns.start; pBody.position.set(s.x, 0.08, s.z); player.face = s.face; cam.yaw = s.face + Math.PI; cam.target.set(s.x, 1.15, s.z); } }
   toast(touchMode ? "왼쪽 조이스틱으로 움직이고, F 버튼으로 말을 걸어요!" : "방향키로 움직이고, Space 점프, F로 말을 걸어요!", 4200);
 }
 $("#startBtn").addEventListener("click", startPlay);

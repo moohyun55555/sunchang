@@ -134,6 +134,7 @@ export function staticBody(ctx, cx, cy, cz, w, h, d, ry = 0, mat0) {
   const b = new CANNON.Body({ mass: 0, material: mat0 || ctx.groundMat, shape: new CANNON.Box(new CANNON.Vec3(w / 2, h / 2, d / 2)) });
   b.position.set(cx, cy, cz);
   if (ry) b.quaternion.setFromEuler(0, ry, 0);
+  b.updateAABB(); // 경계 상자는 만들 때 원점 기준으로 잡혀서, 옮긴 뒤 다시 계산해야 발밑 검사 광선이 찾을 수 있어요
   ctx.bodies.push(b);
   return b;
 }
@@ -181,6 +182,8 @@ function item(ctx, x, z, rot, fn, y = 0) {
 const blocked = (ctx, x, z, r) => ctx.keep.some((k) => Math.hypot(k.x - x, k.z - z) < k.r + r);
 
 // ---------- block avatar ----------
+// 블록 캐릭터는 2.15m로 만들고 0.75배로 줄여 실제 사람 키(약 1.6m)에 맞춰요. 그래야 설계도 크기의 방이 실제처럼 느껴져요.
+export const AV_SCALE = 0.75;
 export function makeAvatar(o) {
   const g = new THREE.Group();
   const skin = mat(o.skin), shirt = mat(o.shirt), pants = mat(o.pants), hair = mat(o.hair || "#333");
@@ -201,8 +204,9 @@ export function makeAvatar(o) {
   }
   const hatG = new THREE.Group();
   g.add(hatG);
-  g.userData = { kind: "block", limbs, height: 2.15, hair, hatG, torso, look: o };
+  g.userData = { kind: "block", limbs, height: 2.15 * AV_SCALE, hair, hatG, torso, look: o };
   setHat(g, o.hat || "none", o.hatColor);
+  g.scale.setScalar(AV_SCALE);
   return g;
 }
 export function setHat(av, hat, color = "#ffc93c") {
@@ -249,7 +253,8 @@ export function makeAnimal(kind = "dog", pose) {
   if (!sleep) for (const [x, z] of [[-0.13, 0.24], [0.13, 0.24], [-0.13, -0.24], [0.13, -0.24]]) { const p = new THREE.Group(); p.position.set(x * s, 0.34 * s, z * s); bx({ group: p }, 0.12 * s, 0.34 * s, 0.12 * s, fur, 0, -0.34 * s, 0, { parent: p }); body.add(p); legs.push(p); }
   const tail = new THREE.Group(); tail.position.set(0, (sleep ? 0.2 : 0.62) * s, -0.36 * s); tail.rotation.x = cat ? -0.9 : 0.7;
   bx({ group: tail }, 0.08, 0.08, 0.34, fur, 0, -0.04, -0.15, { parent: tail }); body.add(tail);
-  g.userData = { kind: "animal", legs, tail, body, height: sleep ? 0.75 : 1.1 * s };
+  g.userData = { kind: "animal", legs, tail, body, height: (sleep ? 0.75 : 1.1 * s) * 0.8 };
+  g.scale.setScalar(0.8);
   return g;
 }
 export function animateAvatar(av, t, mv, air, dt) {
@@ -541,6 +546,13 @@ const FURNISH = {
     void x0;
   },
   hall() {},
+  ehall(ctx, r) {
+    const [x0, x1, z0, z1] = r.rect;
+    item(ctx, (x0 + x1) / 2, z0 + 0.4, 0, (g, add) => { add(0.5, 1.2, 0.45, "#e5e7eb", 0, 0, 0, true); add(0.42, 0.34, 0.03, "#7dd3fc", 0, 1.2, 0); add(0.12, 0.08, 0.08, "#3b82f6", -0.1, 0.66, 0.25); add(0.12, 0.08, 0.08, "#ef4444", 0.1, 0.66, 0.25); add(0.36, 0.05, 0.2, "#9ca3af", 0, 0.42, 0.3); });
+    bx(ctx, 0.5, 0.42, 1.8, "#3fd16f", x1 - 0.4, 0, z0 + 2.6, { solid: true });
+    plant(ctx, x0 + 0.5, z0 + 0.5);
+    void z1;
+  },
   lounge(ctx, r) {
     const [x0, x1, z0, z1] = r.rect, cols = ["#ff4747", "#2fb2ff", "#ffd91a", "#3fd16f", "#9b7bff"];
     for (let k = 0; k < 8; k++) {
@@ -850,12 +862,17 @@ function stairsRoom(ctx, r) {
   }
   const c = wallSpot(rc, back, 0.5, 0.3 + depth / 2);
   staticBody(ctx, c.x, 1.5, c.z, alongX ? depth : width + 0.2, 3, alongX ? width + 0.2 : depth);
-  const lbl = wallSpot(rc, back, 0.5, depth + 1.2);
-  const arrow = signSprite("▲▼ 계단", "#64748b", 0.6);
-  arrow.position.set(lbl.x, 2.4, lbl.z);
-  ctx.group.add(arrow);
+  let pad = wallSpot(rc, back, 0.5, depth + 1.25);
+  const n0 = { n: [0, 1], s: [0, -1], w: [1, 0], e: [-1, 0] }[back];
+  let face = Math.atan2(n0[0], n0[1]);
+  if (pad.x < x0 + 0.9 || pad.x > x1 - 0.9 || pad.z < z0 + 0.9 || pad.z > z1 - 0.9) {
+    // 계단실이 좁으면 문 바로 바깥에 워프 발판을 둬요
+    const g = doorLine(rc, r.doors[0]), mx = g.axis === "z" ? r.doors[0].at : g.c, mz = g.axis === "z" ? g.c : r.doors[0].at;
+    pad = { x: mx - g.inX * 1.3, z: mz - g.inZ * 1.3 };
+    face = Math.atan2(-g.inX, -g.inZ);
+  }
   ctx.special.stairs = ctx.special.stairs || [];
-  ctx.special.stairs.push({ x: lbl.x, z: lbl.z });
+  ctx.special.stairs.push({ x: pad.x, z: pad.z, face });
 }
 function solidRoom(ctx, r) {
   const [x0, x1, z0, z1] = r.rect;
@@ -868,12 +885,42 @@ function solidRoom(ctx, r) {
     if (r.kind === "elevator") {
       for (const s of [-1, 1]) bx(ctx, along ? 0.58 : 0.06, 2.2, along ? 0.06 : 0.58, mat("#d1d5db", { metalness: 0.5, roughness: 0.25 }), px + (along ? s * 0.3 : 0), 0, pz + (along ? 0 : s * 0.3));
       bx(ctx, along ? 0.2 : 0.06, 0.32, along ? 0.06 : 0.2, mat("#ffd400", { emissive: new THREE.Color("#806000") }), px + (along ? 0.95 : 0), 1.0, pz + (along ? 0 : 0.95));
-      const s = signSprite("엘리베이터", "#64748b", 0.65); s.position.set(px - g.inX * 0.6, 3.1, pz - g.inZ * 0.6); ctx.group.add(s);
     } else {
       bx(ctx, along ? 1.0 : 0.06, 2.1, along ? 0.06 : 1.0, r.sign === "남" ? "#3b82f6" : "#ef4444", px, 0, pz);
       const s = signSprite(r.name, r.sign === "남" ? "#2563eb" : "#dc2626", 0.6); s.position.set(px - g.inX * 0.4, 2.95, pz - g.inZ * 0.4); ctx.group.add(s);
     }
   }
+}
+
+// ---------- warp pads (엘리베이터·계단) ----------
+const WARP = "#19c3ff";
+function warpPad(ctx, x, z, label, face) {
+  const disc = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.05, 0.04, 36), new THREE.MeshBasicMaterial({ color: "#9beaff", transparent: true, opacity: 0.85 }));
+  disc.position.set(x, 0.035, z); ctx.group.add(disc);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.08, 8, 48), new THREE.MeshBasicMaterial({ color: WARP }));
+  ring.rotation.x = -Math.PI / 2; ring.position.set(x, 0.07, z); ctx.group.add(ring);
+  const arrows = new THREE.Group(); arrows.position.set(x, 0.08, z); ctx.group.add(arrows);
+  for (const sgn of [1, -1]) {
+    const tri = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.4, 3), new THREE.MeshBasicMaterial({ color: "#ffffff" }));
+    tri.rotation.x = sgn > 0 ? -Math.PI / 2 : Math.PI / 2; tri.position.set(0, 0.01, sgn * 0.42); tri.scale.y = 0.15; arrows.add(tri);
+  }
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.05, 3.6, 32, 1, true), new THREE.MeshBasicMaterial({ color: WARP, transparent: true, opacity: 0.2, depthWrite: false, side: THREE.DoubleSide }));
+  beam.position.set(x, 1.8, z); ctx.group.add(beam);
+  const sparkM = new THREE.MeshBasicMaterial({ color: "#ffffff", transparent: true, opacity: 0.9 });
+  const sparks = [];
+  for (let i = 0; i < 7; i++) { const sp = new THREE.Mesh(boxGeo(0.1, 0.1, 0.1), sparkM); const a = i * 0.9; sp.userData = { a, r: 0.45 + (i % 3) * 0.22, o: i / 7 }; ctx.group.add(sp); sparks.push(sp); }
+  // 엘리베이터와 계단 표지가 가까이 있어도 겹치지 않게 높이를 달리해요
+  const sy = label === "계단" ? 4.0 : 4.55;
+  const sign = signSprite(`▲▼ ${label}`, "#0b8fd0", 0.95); sign.position.set(x, sy, z); ctx.group.add(sign);
+  const sub = signSprite("밟으면 층 이동", "#26355e", 0.55); sub.position.set(x, sy - 0.88, z); ctx.group.add(sub);
+  ctx.anim.push((t) => {
+    ring.scale.setScalar(1 + Math.sin(t * 4) * 0.06);
+    arrows.rotation.y = t * 1.2;
+    beam.material.opacity = 0.16 + Math.sin(t * 3) * 0.06;
+    sign.position.y = sy + Math.sin(t * 2.2) * 0.08;
+    for (const sp of sparks) { const u = (t * 0.45 + sp.userData.o) % 1, a = sp.userData.a + t * 1.5; sp.position.set(x + Math.cos(a) * sp.userData.r, 0.2 + u * 3.2, z + Math.sin(a) * sp.userData.r); sp.scale.setScalar(1 - u * 0.8); }
+  });
+  ctx.warps.push({ x, z, label, face });
 }
 
 // ---------- interior scene ----------
@@ -922,6 +969,9 @@ export function buildInterior(def, opts) {
       ctx.group.add(s);
     }
   }
+  ctx.warps = [];
+  if (def.elevator) warpPad(ctx, def.elevator.x, def.elevator.z, "엘리베이터", def.spawns.elevator ? def.spawns.elevator.face : 0);
+  for (const s of ctx.special.stairs || []) warpPad(ctx, s.x, s.z, "계단", s.face);
   return ctx;
 }
 // quiz blocks / game markers are placed after furniture so they can be re-coloured when solved

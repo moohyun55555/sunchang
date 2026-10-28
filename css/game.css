@@ -185,7 +185,7 @@ body.touch .hint { display: none; }
 #mapCanvas { width: 100%; height: auto; border: 3px solid var(--ink); border-radius: 14px; background: #eaf6ff; }
 .legend { margin: 0; display: flex; gap: 6px 12px; flex-wrap: wrap; font-size: 13px; color: var(--ink-soft); }
 .lg { color: #fff; padding: 0 8px; border-radius: 999px; font-family: var(--f-display); }
-.lg.me { background: var(--coral); } .lg.q { background: #ffb800; } .lg.g, .lg.d { background: var(--pink); } .lg.e { background: #64748b; }
+.lg.me { background: var(--coral); } .lg.q { background: #ffb800; } .lg.g, .lg.d { background: var(--pink); } .lg.e { background: #0b8fd0; }
 
 /* minigames */
 .mg-card { max-width: 460px; }
