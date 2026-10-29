@@ -1,8 +1,8 @@
 // 순창 청소년 자치배움터 탐험대: 장면 전환, 캐릭터 조작, 카메라, 공간 발견, 대화, 퀴즈, 미니게임, 저장
-import { SCENES, OUTDOOR, QUIZZES, GAMES, HATS, COSTUME_HATS, SHIRTS, TOILET_LINES, LEGO_LINES, ELEVATOR_LINES } from "./data.js";
-import { Snd } from "./sfx.js";
-import { MINIGAMES } from "./minigames.js";
-import * as B from "./build.js";
+import { SCENES, OUTDOOR, QUIZZES, GAMES, HATS, COSTUME_HATS, SHIRTS, TOILET_LINES, LEGO_LINES, ELEVATOR_LINES } from "./data.js?v=20261029";
+import { Snd } from "./sfx.js?v=20261029";
+import { MINIGAMES } from "./minigames.js?v=20261029";
+import * as B from "./build.js?v=20261029";
 
 const $ = (s) => document.querySelector(s);
 const loadMsg = $("#loadMsg");
@@ -18,7 +18,8 @@ try {
   fail("3D 엔진을 불러오지 못했어요. 인터넷 연결을 확인하고 새로고침해 주세요.");
   throw e;
 }
-try { await Promise.race([document.fonts.load('64px "Jua"'), new Promise((r) => setTimeout(r, 2500))]); } catch (e) { /* fallback fonts */ }
+// 글꼴 파일을 다 받은 뒤에 3D 표지판을 그려야 글씨가 섞이지 않아요
+try { await Promise.race([document.fonts.load('64px "SunchangJua"', "순창 장독대 ▲▼ · …"), new Promise((r) => setTimeout(r, 8000))]); } catch (e) { /* fallback fonts */ }
 const { clamp, damp } = B;
 const angDamp = (a, b, k, dt) => a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * (1 - Math.exp(-k * dt));
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -117,6 +118,7 @@ function exitPoint(def, e) {
 function makeNPCs(ctx, list) {
   return (list || []).map((d, i) => {
     const av = d.animal ? B.makeAnimal(d.animal, d.pose) : B.makeAvatar(d.look);
+    if (d.skates) B.setSkates(av, true, d.skates);
     const tag = document.createElement("div");
     tag.className = "tag";
     tag.innerHTML = `${d.name}<small>${d.role}</small>`;
@@ -494,7 +496,7 @@ function drawMap() {
   const ox = (W - (bounds[1] - bounds[0]) * sc) / 2, oz = (H - (bounds[3] - bounds[2]) * sc) / 2;
   const X = (v) => ox + (v - bounds[0]) * sc, Z = (v) => oz + (v - bounds[2]) * sc;
   const box = (r, fill, stroke) => { x.fillStyle = fill; x.fillRect(X(r[0]), Z(r[2]), (r[1] - r[0]) * sc, (r[3] - r[2]) * sc); if (stroke) { x.strokeStyle = stroke; x.lineWidth = 2; x.strokeRect(X(r[0]), Z(r[2]), (r[1] - r[0]) * sc, (r[3] - r[2]) * sc); } };
-  const label = (t, cx, cz, size = 13, color = "#1e2a4a") => { x.font = `${size}px Jua, sans-serif`; x.textAlign = "center"; x.textBaseline = "middle"; x.fillStyle = color; x.fillText(t, cx, cz); };
+  const label = (t, cx, cz, size = 13, color = "#1e2a4a") => { x.font = `${size}px "SunchangJua", sans-serif`; x.textAlign = "center"; x.textBaseline = "middle"; x.fillStyle = color; x.fillText(t, cx, cz); };
   if (ctx.indoor) {
     for (const r of def.slabs) box(r, "#f4f1ea");
     for (const t of def.terraces || []) box(t.rect, "#d9c3a5");
@@ -610,10 +612,11 @@ function startRace() {
   if (gp) { endTalk(); gp.racing = true; }
   const st = stadiumPoint(rk, 0);
   pBody.position.set(st.x, 0.08, st.z + 1.2); pBody.velocity.set(0, 0, 0);
-  player.face = Math.PI; cam.yaw = 0; cam.pitch = 0.55; cam.dist = 9;
+  player.face = Math.PI; cam.yaw = 0; cam.pitch = 0.5; cam.dist = 8;
+  B.setSkates(player.avatar, true, "#2fb2ff");
   showMarkers(false);
   S.sport = { type: "race", t: -3.5, time: 0, k: 0, L, rk, rings, rival: 0, gp, freeze: true, lastCount: 4 };
-  sportMsg("롤러 레이스 · 빛나는 고리를 차례로 지나 두 바퀴!", "준비");
+  sportMsg(`롤러 레이스 · 빛나는 고리를 차례로 지나 두 바퀴!<br><small>스케이트는 미끄러워요. ${touchMode ? "조이스틱을 앞으로 밀어 달리고, 코너 앞에서는 뒤로 당겨" : "↑로 달리고, 코너 앞에서는 ↓로"} 속도를 줄여요!</small>`, "준비");
 }
 function updateRace(dt) {
   const sp = S.sport;
@@ -624,7 +627,7 @@ function updateRace(dt) {
     if (sp.t >= 0) { sp.freeze = false; Snd.beep(true); $("#spBig").textContent = "출발!"; setTimeout(() => { if (S.sport === sp) $("#spBig").textContent = ""; }, 700); }
   } else if (!sp.done) {
     sp.time += dt;
-    sp.rival += 7.6 * dt;
+    sp.rival += 6.9 * dt; // 할아버지 속도: 코너에서 속도를 잘 줄이면 이길 수 있을 만큼
     const next = (sp.k + 1) % 8, ring = sp.rings[next], p = pBody.position;
     if (Math.hypot(ring.p.x - p.x, ring.p.z - p.z) < 2.6) {
       sp.k++;
@@ -651,7 +654,7 @@ function finishRace() {
   const sp = S.sport;
   sp.done = true;
   const win = sp.rival < sp.L * 2;
-  const stars = win ? 3 : sp.time < 45 ? 2 : 1;
+  const stars = win ? 3 : sp.time < 40 ? 2 : 1;
   award("race", stars);
   Snd.star(); confetti(stars * 25);
   $("#spBig").textContent = win ? "1등!" : "완주!";
@@ -731,7 +734,7 @@ function updatePenalty(dt) {
 function stopSport() {
   const sp = S.sport;
   if (!sp) return;
-  if (sp.type === "race") { for (const r of sp.rings) { S.cur.group.remove(r.m); r.m.geometry.dispose(); r.m.material.dispose(); } if (sp.gp) { sp.gp.racing = false; sp.gp.pos.set(sp.gp.d.pos[0], 0, sp.gp.d.pos[1]); } }
+  if (sp.type === "race") { B.setSkates(player.avatar, false); for (const r of sp.rings) { S.cur.group.remove(r.m); r.m.geometry.dispose(); r.m.material.dispose(); } if (sp.gp) { sp.gp.racing = false; sp.gp.pos.set(sp.gp.d.pos[0], 0, sp.gp.d.pos[1]); } }
   if (sp.type === "penalty" && sp.keeper) sp.keeper.pos.set(sp.keeper.d.pos[0], 0, sp.keeper.d.pos[1]);
   S.sport = null;
   showMarkers(true);
@@ -882,6 +885,10 @@ function updateCamera(dt) {
     const [a, b] = [[-uz, ux], [uz, -ux]].map(([px, pz]) => Math.atan2(px - ux * 0.7, pz - uz * 0.7));
     cam.yaw = angDamp(cam.yaw, off(a) <= off(b) ? a : b, 2.5, dt);
   }
+  if (S.sport && S.sport.type === "race" && !S.sport.freeze) {
+    const v = pBody.velocity;
+    if (Math.hypot(v.x, v.z) > 2) cam.yaw = angDamp(cam.yaw, Math.atan2(v.x, v.z) + Math.PI, 2.2, dt);
+  }
   if (S.sport && S.sport.type === "penalty") { const g = S.sport.g; tx = g.cx; tz = g.spot - 2.6; ty = 1.0; cam.yaw = angDamp(cam.yaw, 0.28, 6, dt); cam.pitch = damp(cam.pitch, 0.38, 6, dt); dist = 9; }
   cam.target.set(damp(cam.target.x, tx, 12, dt), damp(cam.target.y, ty, 7, dt), damp(cam.target.z, tz, 12, dt));
   const cp = Math.cos(cam.pitch);
@@ -926,9 +933,10 @@ function onGround() {
   }
   return false;
 }
+const SKATE = { acc: 9.5, brake: 15, drag: 0.32, max: 12 };
 function controlPlayer(dt, active) {
   const racing = S.sport && S.sport.type === "race";
-  const SPEED = racing ? 10.5 : 5.6;
+  const SPEED = 5.6;
   const g = onGround() && pBody.velocity.y < 2.5;
   player.grounded = g;
   player.coyote = g ? 0.12 : player.coyote - dt;
@@ -942,10 +950,21 @@ function controlPlayer(dt, active) {
   }
   const fx = -Math.sin(cam.yaw), fz = -Math.cos(cam.yaw), rx = Math.cos(cam.yaw), rz = -Math.sin(cam.yaw);
   const dx = rx * ix - fx * iz, dz = rz * ix - fz * iz;
-  const k = g ? (racing ? 5 : 14) : 4;
-  pBody.velocity.x = damp(pBody.velocity.x, dx * SPEED, k, dt);
-  pBody.velocity.z = damp(pBody.velocity.z, dz * SPEED, k, dt);
-  if (Math.hypot(dx, dz) > 0.08) player.face = angDamp(player.face, Math.atan2(dx, dz), 12, dt);
+  if (racing) {
+    // 롤러스케이트: 미는 만큼 천천히 빨라지고, 손을 떼도 쭉 미끄러져요. 반대로 당기면 브레이크.
+    const v = pBody.velocity, sp = Math.hypot(v.x, v.z);
+    const braking = sp > 0.5 && dx * v.x + dz * v.z < 0;
+    const acc = (braking ? SKATE.brake : SKATE.acc) * (g ? 1 : 0.3);
+    let nx = v.x + dx * acc * dt, nz = v.z + dz * acc * dt;
+    const drag = Math.exp(-SKATE.drag * dt), ns = Math.hypot(nx, nz) * drag, lim = ns > SKATE.max ? SKATE.max / ns : 1;
+    v.x = nx * drag * lim; v.z = nz * drag * lim;
+    if (ns > 0.8) player.face = angDamp(player.face, Math.atan2(v.x, v.z), 9, dt);
+  } else {
+    const k = g ? 14 : 4;
+    pBody.velocity.x = damp(pBody.velocity.x, dx * SPEED, k, dt);
+    pBody.velocity.z = damp(pBody.velocity.z, dz * SPEED, k, dt);
+  }
+  if (!racing && Math.hypot(dx, dz) > 0.08) player.face = angDamp(player.face, Math.atan2(dx, dz), 12, dt);
   else if (S.talk && S.talk.npc) player.face = angDamp(player.face, Math.atan2(S.talk.npc.pos.x - pBody.position.x, S.talk.npc.pos.z - pBody.position.z), 8, dt);
   if (active && player.jumpBuf > 0 && player.coyote > 0) { pBody.velocity.y = 10.5; player.jumpBuf = 0; player.coyote = 0; Snd.jump(); }
   player.moveAmt = damp(player.moveAmt, Math.min(1, Math.hypot(pBody.velocity.x, pBody.velocity.z) / 5.6), 10, dt);
@@ -975,6 +994,7 @@ function updateNPCs(dt) {
     const rad = n.d.animal ? 0.55 : 0.72;
     if (dP < rad && dP > 0.001 && Math.abs(p.y - n.pos.y) < 1.5) { const push = (rad - dP) / dP; pBody.position.x += (p.x - n.pos.x) * push; pBody.position.z += (p.z - n.pos.z) * push; }
     n.avatar.position.copy(n.pos);
+    if (n.d.skates) n.avatar.position.y += B.SKATE_LIFT;
     n.avatar.rotation.y = n.face;
     B.animateAvatar(n.avatar, S.T + n.phase, n.moving, false, dt);
   }
@@ -1085,7 +1105,7 @@ function frame(now) {
   updateNPCs(dt);
   if (S.mode === "play") triggers(dt);
   const p = pBody.position;
-  player.avatar.position.set(p.x, p.y, p.z);
+  player.avatar.position.set(p.x, p.y + (player.avatar.userData.skates ? B.SKATE_LIFT : 0), p.z);
   player.avatar.rotation.y = player.face;
   player.avatar.userData.dance = false;
   B.animateAvatar(player.avatar, S.T, player.moveAmt, !player.grounded, dt);
@@ -1113,4 +1133,4 @@ renderTitle();
 $("#title").hidden = false;
 $("#loading").classList.add("done");
 requestAnimationFrame((t) => { last = t; frame(t); });
-window.__game = { S, save, pBody, cam, enterScene, act, openQuiz, startGame, startRace, startPenalty, getScene, DEX, player, world, renderer };
+window.__game = { S, save, pBody, cam, enterScene, act, openQuiz, startGame, startRace, startPenalty, getScene, DEX, player, world, renderer, JOY };

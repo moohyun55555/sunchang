@@ -5,7 +5,7 @@
 // ---------- 퀴즈 (층마다 5개 안팎, 공간 소개를 확인하는 쉬운 문제) ----------
 // a: 정답 번호(0부터), why: 정답을 맞힌 뒤 보여 주는 한마디
 export const QUIZZES = {
-  "w1-vest": { q: "정문으로 들어오면 처음 지나는 방풍실! 이름처럼 무엇을 막아 줄까요?", opts: ["바깥바람", "공룡", "숙제"], a: 0, why: "방풍(防風)은 '바람을 막는다'는 뜻이에요. 겨울엔 찬바람, 여름엔 더운 바람이 안으로 바로 들어오지 않게 해 줘요." },
+  "w1-vest": { q: "정문으로 들어오면 처음 지나는 방풍실! 이름처럼 무엇을 막아 줄까요?", opts: ["바깥바람", "공룡", "숙제"], a: 0, why: "방풍은 '바람을 막는다'는 뜻이에요. 겨울엔 찬바람, 여름엔 더운 바람이 안으로 바로 들어오지 않게 해 줘요." },
   "w1-cafe": { q: "북카페에서 할 수 있는 일로 가장 알맞은 것은?", opts: ["책 읽고 친구와 이야기 나누기", "수영 연습하기", "자동차 고치기"], a: 0, why: "북카페는 책과 대화가 있는 쉼터예요. 소파에 앉아 책을 읽어도 좋아요." },
   "w1-lego": { q: "레고랜드에서는 무엇으로 상상한 것을 만들어 볼까요?", opts: ["블록", "진흙탕", "아이스크림"], a: 0, why: "알록달록 블록으로 건물도, 로봇도 만들 수 있어요. 바닥에 떨어진 블록은 꼭 치워 주세요!" },
   "w1-meet": { q: "청소년 자치배움터의 '자치'는 무슨 뜻일까요?", opts: ["우리 일을 우리가 스스로 정하고 꾸려 가기", "선생님이 모든 걸 정해 주기", "자면서 치킨 먹기"], a: 0, why: "자치배움터는 청소년이 직접 회의하고 정하는 곳이에요. 치킨은… 회의 끝나고 먹기로 해요." },
@@ -51,7 +51,7 @@ export const GAMES = {
   cook: { name: "떡볶이 재료 받기", room: "쿠킹클래스", howto: "냄비를 좌우로 움직여 떡볶이 재료를 받아요. 양말이나 운동화는 피해요!", goals: [8, 15, 22], unit: "점" },
   code: { name: "로봇 길 찾기", room: "코딩실", howto: "명령 블록을 순서대로 쌓고 '실행'을 눌러 로봇을 별까지 보내요.", goals: [1, 2, 3], unit: "단계" },
   drum: { name: "드럼 따라 치기", room: "밴드연습실", howto: "드럼이 연주하는 순서를 잘 듣고 똑같이 따라 쳐요.", goals: [3, 5, 7], unit: "단계" },
-  race: { name: "롤러 레이스", room: "롤러스케이트장", howto: "빛나는 고리를 차례대로 지나 두 바퀴를 달려요. 쌩쌩 할아버지를 이겨 보세요!", goals: [1, 2, 3], unit: "" },
+  race: { name: "롤러 레이스", room: "롤러스케이트장", howto: "롤러스케이트는 미끄러워요! 앞으로 밀어서 속도를 내고, 코너 앞에서는 뒤로 당겨 속도를 줄이며 빛나는 고리를 차례대로 지나 두 바퀴! 쌩쌩 할아버지를 이겨 보세요.", goals: [1, 2, 3], unit: "" },
   penalty: { name: "승부차기", room: "풋살장", howto: "조준이 마음에 들 때 한 번, 힘이 알맞을 때 또 한 번 눌러 공을 차요. 다섯 번 차요!", goals: [1, 2, 4], unit: "골" },
   climb: { name: "클라이밍 도전", room: "실내클라이밍", howto: "홀드를 밟고 폴짝폴짝 올라가 꼭대기 종을 울려요.", goals: [1, 1, 1], unit: "" },
 };
@@ -119,7 +119,7 @@ export const SCENES = {
     gags: [
       ...CORE_GAGS(),
       { kind: "text", pos: [4.4, 11.7], r: 1.8, label: "통신 장비", verb: "살펴보기", lines: ["쉿! 와이파이가 자는 중이에요… zZ", "초록 불이 깜빡깜빡. 인터넷이 열심히 달리는 중이래요!", "케이블이 엄청 많아요. 이걸 다 이으면 순창에서 서울까지…는 아니에요."] },
-      { kind: "text", pos: [23.65, 1.4], r: 1.8, label: "회의 화이트보드", verb: "읽기", lines: ["오늘의 안건: ① 축제 때 뭐 하지? ② 급식에 떡볶이 넣어 주세요 ③ 회의 끝나고 치킨?", "회의 규칙: 끝까지 듣기, 손 들고 말하기, 졸지 않기(특히 김쌤)."] },
+      { kind: "text", pos: [23.65, 1.4], r: 1.8, label: "회의 화이트보드", verb: "읽기", lines: ["오늘의 안건: 1. 축제 때 뭐 하지? 2. 급식에 떡볶이 넣어 주세요 3. 회의 끝나고 치킨?", "회의 규칙: 끝까지 듣기, 손 들고 말하기, 졸지 않기(특히 김쌤)."] },
       { kind: "text", pos: [11.9, 11.6], r: 1.7, label: "전시 작품", verb: "감상하기", lines: ["작품명 「고추장 공룡」. 만든 사람: 순창 어린이. 설명: 매운 걸 먹으면 불을 뿜어요.", "작품명 「미래의 자치배움터」. 지붕에 미끄럼틀이 달려 있어요.", "작품명 「급식 떡볶이 탑」. 높이 3미터. 맛은 비밀."] },
       { kind: "lego", rect: [0.8, 5.6, 7.0, 10.0] },
     ],
@@ -271,16 +271,16 @@ export const SCENES = {
       { id: "e1-lobby", name: "스포츠동 로비", rect: [0, 5, 24.6, 46.5], kind: "hall", open: true, noDex: true, floor: "tile" },
       { id: "e1-wait", name: "대기공간", rect: [0, 5, 46.5, 66.6], kind: "waiting", open: true, floor: "wood", color: "#3fd16f",
         desc: "롤러장 남쪽 끝의 쉼터예요. 스케이트 끈을 묶고 준비해요." },
-      { id: "e1-rink", name: "롤러스케이트장", rect: [5, 22.2, 8, 66.6], kind: "rink", open: true, floor: "rink", color: "#ff4747", quiz: "e1-rink", quizAt: [6.2, 10.4], game: "race", gameAt: [19.0, 37],
+      { id: "e1-rink", name: "롤러스케이트장", rect: [5, 22.2, 8, 66.6], signAt: [13.9, 40.5], signY: 5.0, signScale: 1.1, kind: "rink", open: true, floor: "rink", color: "#ff4747", quiz: "e1-rink", quizAt: [6.2, 10.4], game: "race", gameAt: [19.0, 37],
         desc: "타원형 트랙을 씽씽 달리는 실내 롤러스케이트장이에요. 벽에는 안전매트가 있어요." },
     ],
     exits: [{ axis: "x", c: -2.2, at: 31, w: 2.2, to: "outdoor", spawn: "fromEast", label: "스포츠동 출입구", verb: "밖으로 나가기" }],
     elevator: { x: 3.9, z: 26, face: -Math.PI / 2 },
     spawns: { fromOutside: { x: -1.0, z: 31, face: Math.PI / 2 }, elevator: { x: 4.2, z: 26, face: Math.PI / 2 } },
     npcs: [
-      { id: "coach", name: "롤러 코치", role: "롤러장 선생님", look: { skin: "#e9b98f", shirt: "#ff4747", pants: "#1f2937", hair: "#151515", hat: "helmet", hatColor: "#ffd91a" }, pos: [21.3, 34.2], face: -Math.PI / 2,
+      { id: "coach", name: "롤러 코치", role: "롤러장 선생님", look: { skin: "#e9b98f", shirt: "#ff4747", pants: "#1f2937", hair: "#151515", hat: "helmet", hatColor: "#ffd91a" }, skates: "#ffd91a", pos: [21.3, 34.2], face: -Math.PI / 2,
         lines: ["헬멧 쓰고, 보호대 하고, 준비됐지?", "트랙 위 빛나는 표시에서 F를 누르면 레이스 시작이야!", "저기 쌩쌩 할아버지는 왕년에 '롤러장의 번개'였대. 조심해!"] },
-      { id: "grandpa", name: "쌩쌩 할아버지", role: "롤러장 단골", look: { skin: "#f1cfb2", shirt: "#2fb2ff", pants: "#334155", hair: "#e5e5e5", hat: "helmet", hatColor: "#ff4747" }, pos: [5.9, 50], area: [5.5, 6.4, 40, 60],
+      { id: "grandpa", name: "쌩쌩 할아버지", role: "롤러장 단골", look: { skin: "#f1cfb2", shirt: "#2fb2ff", pants: "#334155", hair: "#e5e5e5", hat: "helmet", hatColor: "#ff4747" }, skates: "#ff4747", pos: [5.9, 50], area: [5.5, 6.4, 40, 60],
         lines: ["허허, 내가 이래 봬도 롤러장의 번개였지!", "젊은 친구, 나랑 한 판 붙어 볼 텐가?", "할아버지가 왜 이렇게 빠르냐고? 매일 아침 고추장 한 숟갈이지!"] },
       { id: "shopkeeper", name: "매점 이모", role: "매점", look: { skin: "#f3cfae", shirt: "#ffb000", pants: "#5b4b6b", hair: "#3b2a20", hat: "bun" }, pos: [1.2, 22.3], face: Math.PI / 2,
         lines: ["어서 와! 오늘은 바나나우유 1+1이야!", "…근데 너 돈 있니? 없구나. 괜찮아, 구경은 공짜야!", "롤러 타고 나면 꼭 물 마시렴. 물은 공짜란다!"] },

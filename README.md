@@ -13,7 +13,7 @@
   - 쿠킹클래스: 떡볶이 재료 받기
   - 코딩실: 로봇 길 찾기
   - 밴드연습실: 드럼 따라 치기
-  - 롤러스케이트장: 쌩쌩 할아버지와 롤러 레이스
+  - 롤러스케이트장: 쌩쌩 할아버지와 롤러 레이스 (진짜 롤러스케이트를 신고 미끄러지듯 달려요. 코너 앞에서 속도를 줄이는 게 비결!)
   - 풋살장: 승부차기
   - 실내클라이밍: 꼭대기 종 치기
   - 창의교육마당: 점프 블록 꼭대기의 별
@@ -55,6 +55,8 @@ python3 -m http.server 8000
 
 그다음 브라우저에서 `http://localhost:8000` 을 열어요. (`index.html`을 더블클릭하면 모듈 보안 정책 때문에 열리지 않아요.)
 
+파일을 고쳐서 다시 올릴 때는 `index.html`, `css/game.css`, `js/main.js`에 있는 `?v=` 뒤의 숫자를 모두 같은 새 숫자로 바꿔 주세요. 그래야 학생들 브라우저가 예전 파일과 섞지 않고 새 파일을 받아요.
+
 ## 배포 (GitHub Pages)
 
 1. 저장소 **Settings → General → Danger Zone → Change visibility → Make public** (무료 요금제에서는 공개 저장소만 Pages 사용 가능)
@@ -66,4 +68,4 @@ python3 -m http.server 8000
 - [three.js](https://threejs.org/) r170 — 3D 그래픽 (`vendor/`, MIT)
 - [cannon-es](https://github.com/pmndrs/cannon-es) 0.20 — 물리 엔진 (`vendor/`, MIT)
 - 효과음과 배경음악은 Web Audio로 직접 합성해 별도 음원 파일이 없어요.
-- 글꼴: Google Fonts의 Jua, Gowun Dodum
+- 글꼴: 주아체 하나만 써요(`fonts/jua.woff2`, SIL OFL 1.1, `fonts/OFL.txt`). 주아체에 없는 기호(· … — ▲▼ 화살표 ✓ 「」 ♪)는 같은 굵기로 그려 넣어서, 3D 표지판과 화면 글씨가 기기와 상관없이 똑같이 보여요.

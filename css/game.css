@@ -1,3 +1,5 @@
+/* 게임의 모든 글씨는 이 글꼴 하나로 써요: 주아체(OFL) + 주아체에 없는 기호(· … ▲▼ 화살표 등)를 같은 굵기로 그려 넣은 파일 */
+@font-face { font-family: "SunchangJua"; src: url("../fonts/jua.woff2?v=20261029") format("woff2"); font-display: block; }
 :root {
   /* Layout: full-bleed 3D stage; chunky toy-like panels pinned to the corners; modal cards centered */
   --sky: #a6defc;
@@ -9,8 +11,8 @@
   --coral: #ff5a5f;
   --mint: #1fbf9f;
   --pink: #ff4fa3;
-  --f-display: "Jua", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
-  --f-body: "Gowun Dodum", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --f-display: "SunchangJua", sans-serif;
+  --f-body: "SunchangJua", sans-serif;
   --lift: 0 4px 0 var(--ink);
   color-scheme: light;
 }
@@ -18,7 +20,7 @@
 html, body { height: 100%; }
 body { margin: 0; overflow: hidden; background: var(--sky); color: var(--ink); font-family: var(--f-body); word-break: keep-all; -webkit-tap-highlight-color: transparent; }
 [hidden] { display: none !important; }
-button { font: inherit; color: inherit; }
+button, input, select, textarea { font: inherit; color: inherit; }
 button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px solid var(--coral); outline-offset: 3px; }
 #stage { position: fixed; inset: 0; }
 #stage canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }

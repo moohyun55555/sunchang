@@ -7,10 +7,8 @@
 <meta name="description" content="순창 창의예술미래공간 복합시설(청소년 자치배움터)을 블록 캐릭터로 미리 탐험하는 3D 게임">
 <meta name="theme-color" content="#3aa6ff">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='8' y='20' width='48' height='36' rx='4' fill='%23ffc93c' stroke='%231e2a4a' stroke-width='4'/%3E%3Crect x='18' y='8' width='28' height='14' rx='3' fill='%23ff5a5f' stroke='%231e2a4a' stroke-width='4'/%3E%3Ccircle cx='24' cy='36' r='4' fill='%231e2a4a'/%3E%3Ccircle cx='40' cy='36' r='4' fill='%231e2a4a'/%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap">
-<link rel="stylesheet" href="css/game.css">
+<link rel="preload" href="fonts/jua.woff2?v=20261029" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/game.css?v=20261029">
 </head>
 <body>
 <div id="stage" aria-hidden="true"></div>
@@ -151,7 +149,8 @@
 </div>
 <div id="fx" aria-hidden="true"></div>
 <div id="fade" class="on"></div>
-<script type="module" src="js/main.js"></script>
+<!-- 업데이트할 때 ?v= 숫자를 바꾸면 브라우저가 예전 파일과 섞지 않고 새로 받아요 -->
+<script type="module" src="js/main.js?v=20261029"></script>
 <script nomodule>document.getElementById("loadMsg").textContent = "이 브라우저는 너무 오래되어 게임을 열 수 없어요. 크롬, 삼성 인터넷, 사파리를 최신 버전으로 바꿔 주세요.";</script>
 </body>
 </html>

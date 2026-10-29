@@ -34,7 +34,7 @@ function canvasTex(w, h, draw, repeat) {
   if (repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(repeat[0], repeat[1]); }
   return t;
 }
-const FONT = 'Jua, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
+const FONT = '"SunchangJua", sans-serif'; // 게임 글씨는 모두 fonts/jua.woff2 하나로 그려요
 function fitText(x, text, size, maxW) {
   x.font = `${size}px ${FONT}`;
   const w = x.measureText(text).width;
@@ -83,7 +83,7 @@ function signTex(text, bg, fg, w, h, sub) {
     x.fillStyle = fg; x.textAlign = "center"; x.textBaseline = "middle";
     fitText(x, text, Math.round(h * (sub ? 0.5 : 0.62)), w * 0.92);
     x.fillText(text, w / 2, sub ? h * 0.4 : h * 0.54);
-    if (sub) { x.globalAlpha = 0.85; x.font = `${Math.round(h * 0.2)}px "Gowun Dodum", sans-serif`; x.fillText(sub, w / 2, h * 0.79); x.globalAlpha = 1; }
+    if (sub) { x.globalAlpha = 0.85; x.font = `${Math.round(h * 0.2)}px ${FONT}`; x.fillText(sub, w / 2, h * 0.79); x.globalAlpha = 1; }
   });
 }
 function iconTex(bg, glyph, fg = "#ffffff") {
@@ -231,6 +231,28 @@ export function setHat(av, hat, color = "#ffc93c") {
   if (hat === "headband") { B(0.55, 0.08, 0.55, mat(color), 0, 1.8, 0); }
   av.userData.hat = hat;
 }
+// 롤러스케이트: 다리 끝에 신발과 바퀴를 달아요. 신은 동안은 캐릭터를 SKATE_LIFT만큼 띄워야 바퀴가 바닥에 닿아요.
+export const SKATE_LIFT = 0.2 * AV_SCALE;
+export function setSkates(av, on, color = "#ff4fa3") {
+  const u = av.userData;
+  if (!!u.skates === on) return;
+  if (!on) { for (const g of u.skates) g.parent.remove(g); u.skates = null; return; }
+  u.skates = [];
+  for (const name of ["legL", "legR"]) {
+    const g = new THREE.Group(); g.position.set(0, -0.72, 0);
+    const P = { group: g };
+    bx(P, 0.44, 0.26, 0.52, color, 0, -0.02, 0.06, { parent: g });
+    bx(P, 0.46, 0.06, 0.08, "#ffffff", 0, 0.2, 0.06, { parent: g });
+    bx(P, 0.32, 0.05, 0.6, "#cbd5e1", 0, -0.08, 0.06, { parent: g });
+    bx(P, 0.14, 0.1, 0.1, "#ef4444", 0, -0.12, 0.38, { parent: g });
+    for (const z of [-0.14, 0.26]) for (const sx of [-1, 1]) {
+      const w = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.1, 12), mat("#ffd400"));
+      w.rotation.z = Math.PI / 2; w.position.set(sx * 0.15, -0.12, z); w.castShadow = true; g.add(w);
+    }
+    u.limbs[name].add(g);
+    u.skates.push(g);
+  }
+}
 export function makeAnimal(kind = "dog", pose) {
   const g = new THREE.Group(), cat = kind === "cat";
   const fur = mat(cat ? "#f2a65a" : "#d9a066"), dark = mat("#3a2a1e"), white = mat("#fff4e0");
@@ -267,6 +289,15 @@ export function animateAvatar(av, t, mv, air, dt) {
     return;
   }
   const L = u.limbs, sw = Math.sin(t * 9.5) * 0.95 * mv;
+  if (u.skates && !air) {
+    // 스케이트 타기: 다리를 번갈아 옆뒤로 밀고, 팔은 크게 흔들어요
+    const ph = t * 5.5, push = Math.max(0, Math.sin(ph)) * mv, push2 = Math.max(0, -Math.sin(ph)) * mv;
+    L.legL.rotation.z = damp(L.legL.rotation.z, -push * 0.45, 14, dt); L.legR.rotation.z = damp(L.legR.rotation.z, push2 * 0.45, 14, dt);
+    L.legL.rotation.x = damp(L.legL.rotation.x, push * 0.35, 14, dt); L.legR.rotation.x = damp(L.legR.rotation.x, push2 * 0.35, 14, dt);
+    L.armL.rotation.x = damp(L.armL.rotation.x, Math.sin(ph) * 0.9 * mv, 12, dt); L.armR.rotation.x = damp(L.armR.rotation.x, -Math.sin(ph) * 0.9 * mv, 12, dt);
+    return;
+  }
+  L.legL.rotation.z = damp(L.legL.rotation.z, 0, 14, dt); L.legR.rotation.z = damp(L.legR.rotation.z, 0, 14, dt);
   const tg = air ? [-2.9, -2.9, 0.3, -0.3] : u.dance ? [-2.6 + Math.sin(t * 8) * 0.5, -0.4 - Math.sin(t * 8) * 0.5, Math.sin(t * 8) * 0.4, -Math.sin(t * 8) * 0.4] : [sw, -sw, -sw, sw];
   L.armL.rotation.x = damp(L.armL.rotation.x, tg[0], 18, dt);
   L.armR.rotation.x = damp(L.armR.rotation.x, tg[1], 18, dt);
@@ -718,7 +749,7 @@ const FURNISH = {
       staticBody(ctx, x + 0.05, 0.5, (zr0 + zr1) / 2, 0.6, 1, zr1 - zr0);
     }
     // wheelchair spots at the back
-    for (const z of [(z0 + z1) / 2 + 1.2, (z0 + z1) / 2]) { bx(ctx, 1.0, 0.02, 1.0, "#2563eb", x1 - 1.0, 0.01, z, { shadow: false }); const s = signSprite("♿ 휠체어석", "#2563eb", 0.45); s.position.set(x1 - 1.0, 1.3, z); ctx.group.add(s); }
+    for (const z of [(z0 + z1) / 2 + 1.2, (z0 + z1) / 2]) { bx(ctx, 1.0, 0.02, 1.0, "#2563eb", x1 - 1.0, 0.01, z, { shadow: false }); const s = signSprite("휠체어석", "#2563eb", 0.45); s.position.set(x1 - 1.0, 1.3, z); ctx.group.add(s); }
   },
   perform(ctx, r) {
     const [x0, x1, z0, z1] = r.rect;
@@ -964,8 +995,9 @@ export function buildInterior(def, opts) {
     else if (r.kind === "stairs") stairsRoom(ctx, r);
     else if (FURNISH[r.kind]) FURNISH[r.kind](ctx, { ...r, rect: rects[0] });
     if (!r.noDex && r.name) {
-      const rc = rects[0], s = signSprite(r.name, r.color || "#26355e", r.outside ? 0.7 : 0.78);
-      s.position.set((rc[0] + rc[1]) / 2, 3.5, (rc[2] + rc[3]) / 2);
+      const rc = rects[0], s = signSprite(r.name, r.color || "#26355e", r.signScale || (r.outside ? 0.7 : 0.78));
+      const at = r.signAt || [(rc[0] + rc[1]) / 2, (rc[2] + rc[3]) / 2];
+      s.position.set(at[0], r.signY || 3.5, at[1]);
       ctx.group.add(s);
     }
   }

@@ -1,6 +1,6 @@
 // 2D 미니게임 다섯 가지: 레고 블록 쌓기, 리듬 댄스, 떡볶이 재료 받기, 로봇 길 찾기, 드럼 따라 치기
 // 각 게임은 stage(div)에 그림을 그리고, 끝나면 api.end(점수)를 불러요. 돌려주는 함수는 정리(cleanup)용이에요.
-const FONT = 'Jua, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
+const FONT = '"SunchangJua", sans-serif'; // 게임 글씨는 모두 fonts/jua.woff2 하나로 그려요
 function makeCanvas(stage, W, H) {
   const cv = document.createElement("canvas"), dpr = Math.min(2, window.devicePixelRatio || 1);
   cv.width = W * dpr; cv.height = H * dpr;
@@ -150,8 +150,9 @@ function rhythm(stage, api) {
 // ---------- 3. 떡볶이 재료 받기 ----------
 function cook(stage, api) {
   const W = 360, H = 480, { cv, x } = makeCanvas(stage, W, H);
-  const GOOD = [["🍡", "떡"], ["🍢", "어묵"], ["🥚", "계란"], ["🌶️", "고추장"], ["🧀", "치즈"]];
-  const BAD = [["🧦", "양말 떡볶이?! 으웩!"], ["👟", "운동화는 안 씹혀요!"], ["📱", "휴대폰은 맛없어요!"], ["🧽", "수세미는 반칙!"]];
+  // [그림, 받았을 때 문구, 그림 아래 이름표] 이름표가 있어서 그림 글꼴이 없는 기기에서도 무엇인지 알 수 있어요
+  const GOOD = [["🍡", "떡", "떡"], ["🍢", "어묵", "어묵"], ["🥚", "계란", "계란"], ["🌶️", "고추장", "고추장"], ["🧀", "치즈", "치즈"]];
+  const BAD = [["🧦", "양말 떡볶이?! 으웩!", "양말"], ["👟", "운동화는 안 씹혀요!", "운동화"], ["📱", "휴대폰은 맛없어요!", "휴대폰"], ["🧽", "수세미는 반칙!", "수세미"]];
   let pot = W / 2, target = W / 2, left = false, right = false, items = [], spawn = 0, time = 30, score = 0, pops = [], ended = false;
   const stopKeys = onKeys({ ArrowLeft: () => (left = true), ArrowRight: () => (right = true), KeyA: () => (left = true), KeyD: () => (right = true) });
   const up = (e) => { if (e.code === "ArrowLeft" || e.code === "KeyA") left = false; if (e.code === "ArrowRight" || e.code === "KeyD") right = false; };
@@ -184,7 +185,7 @@ function cook(stage, api) {
     }
     x.fillStyle = "#fff6e3"; x.fillRect(0, 0, W, H);
     x.fillStyle = "#f2c94c"; x.fillRect(0, H - 40, W, 40);
-    for (const it of items) { x.save(); x.translate(it.x, it.y); x.rotate(Math.sin(it.rot) * 0.4); x.font = "34px sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(it.k[0], 0, 0); x.restore(); }
+    for (const it of items) { x.save(); x.translate(it.x, it.y); x.rotate(Math.sin(it.rot) * 0.4); x.font = "34px sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(it.k[0], 0, -6); x.restore(); textC(x, it.k[2], it.x, it.y + 24, 15, it.good ? "#1e2a4a" : "#c0262d", "#ffffff"); }
     // pot
     x.fillStyle = "#4b5563"; rr(x, pot - 46, 412, 92, 34, 10); x.fill();
     x.fillStyle = "#ef4444"; rr(x, pot - 40, 406, 80, 12, 6); x.fill();
@@ -214,7 +215,7 @@ function code(stage, api) {
     <div class="code-pal">
       <button type="button" data-c="F">▲ 앞으로</button><button type="button" data-c="L">↺ 왼쪽 돌기</button><button type="button" data-c="R">↻ 오른쪽 돌기</button>
     </div>
-    <div class="code-run"><button type="button" id="cUndo">⌫ 한 칸 지우기</button><button type="button" id="cClear">모두 지우기</button><button type="button" class="go" id="cRun">▶ 실행</button></div>`;
+    <div class="code-run"><button type="button" id="cUndo">한 칸 지우기</button><button type="button" id="cClear">모두 지우기</button><button type="button" class="go" id="cRun">▶ 실행</button></div>`;
   stage.appendChild(wrap);
   const $ = (s) => wrap.querySelector(s);
   const msg = (t) => { $("#cMsg").textContent = t; };
