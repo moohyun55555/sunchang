@@ -1,8 +1,8 @@
 // 순창 청소년 자치배움터 탐험대: 장면 전환, 캐릭터 조작, 카메라, 공간 발견, 대화, 퀴즈, 미니게임, 저장
-import { SCENES, OUTDOOR, QUIZZES, GAMES, HATS, COSTUME_HATS, SHIRTS, TOILET_LINES, LEGO_LINES, ELEVATOR_LINES } from "./data.js?v=20261029";
-import { Snd } from "./sfx.js?v=20261029";
-import { MINIGAMES } from "./minigames.js?v=20261029";
-import * as B from "./build.js?v=20261029";
+import { SCENES, OUTDOOR, QUIZZES, GAMES, HATS, COSTUME_HATS, SHIRTS, TOILET_LINES, LEGO_LINES, ELEVATOR_LINES } from "./data.js?v=20261124";
+import { Snd } from "./sfx.js?v=20261124";
+import { MINIGAMES } from "./minigames.js?v=20261124";
+import * as B from "./build.js?v=20261124";
 
 const $ = (s) => document.querySelector(s);
 const loadMsg = $("#loadMsg");
@@ -150,7 +150,7 @@ function getScene(id) {
     B.placeQuizAndGames(ctx, def, opts.solved);
     ctx.def = def;
     ctx.indoor = true;
-    for (const e of def.exits || []) if (e.to) { const p = exitPoint(def, e); ctx.interact.push({ kind: "door", x: p.x, z: p.z, r: 1.8, label: e.label, verb: e.verb, to: e.to, spawn: e.spawn }); }
+    for (const e of def.exits || []) if (e.to) { const p = exitPoint(def, e); ctx.interact.push({ kind: "door", x: p.x, z: p.z, r: 2.1, label: e.label, verb: e.verb, to: e.to, spawn: e.spawn }); }
     for (const w of ctx.warps) ctx.interact.push({ kind: "elev", x: w.x, z: w.z, r: 1.7, label: w.label, verb: "층 이동" });
     for (const g of def.gags || []) addGag(ctx, g);
     if (ctx.special.goal) {

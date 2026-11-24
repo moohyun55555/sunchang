@@ -408,7 +408,12 @@ function buildWalls(ctx, def) {
     put(intr, "z", z0, x0, x1); put(intr, "z", z1, x0, x1); put(intr, "x", x0, z0, z1); put(intr, "x", x1, z0, z1);
     if (!r.solid) for (const d of r.doors || []) { const g = doorLine(r.rect, d); put(gaps, g.axis, g.c, g.a0, g.a1); frames.push({ ...g, color: r.color || "#26355e" }); }
   }
-  for (const e of def.exits || []) { put(gaps, e.axis, e.c, e.at - e.w / 2, e.at + e.w / 2); frames.push({ axis: e.axis, c: e.c, a0: e.at - e.w / 2, a1: e.at + e.w / 2, color: e.to ? "#ff4fa3" : "#3fd16f", exit: true }); }
+  const portals = [];
+  for (const e of def.exits || []) {
+    put(gaps, e.axis, e.c, e.at - e.w / 2, e.at + e.w / 2);
+    if (e.to) portals.push(e);
+    else frames.push({ axis: e.axis, c: e.c, a0: e.at - e.w / 2, a1: e.at + e.w / 2, color: "#3fd16f", exit: true });
+  }
   const wallM = mat("#f4f1ea"), capM = mat("#2b3655"), baseM = mat("#e2ddd1");
   const glassM = new THREE.MeshStandardMaterial({ color: "#8fd3ff", transparent: true, opacity: 0.35, roughness: 0.1, depthWrite: false });
   const piece = (axis, c, a0, a1, exterior) => {
@@ -437,12 +442,62 @@ function buildWalls(ctx, def) {
     if (ext.has(k)) iv = subtract(iv, union(ext.get(k).iv));
     for (const [a, b] of subtract(iv, union(gaps.get(k)?.iv || []))) piece(e.axis, e.c, a, b, false);
   }
+  // 밖(또는 다른 건물)으로 나가는 출입구: 걸어서는 못 나가게 막고, 포탈 앞에서 F로 나가요
+  for (const e of portals) {
+    const inward = def.slabs.some(([x0, x1, z0, z1]) => { const px = e.axis === "x" ? e.c + 0.6 : e.at, pz = e.axis === "z" ? e.c + 0.6 : e.at; return px > x0 && px < x1 && pz > z0 && pz < z1; }) ? 1 : -1;
+    portalGate(ctx, e.axis, e.c, e.at, e.w, `${e.label} · ${e.verb}`, inward * 0.5);
+    staticBody(ctx, e.axis === "z" ? e.at : e.c, 5, e.axis === "z" ? e.c : e.at, e.axis === "z" ? e.w + 0.2 : 0.4, 10, e.axis === "z" ? 0.4 : e.w + 0.2);
+  }
   // door frames
   for (const f of frames) {
     const t = 0.34, fm = mat(f.color);
     for (const p of [f.a0, f.a1]) bx(ctx, f.axis === "z" ? 0.22 : t, WALL_H, f.axis === "z" ? t : 0.22, fm, f.axis === "z" ? p : f.c, 0, f.axis === "z" ? f.c : p, { shadow: false });
     bx(ctx, f.axis === "z" ? f.a1 - f.a0 : t, 0.32, f.axis === "z" ? t : f.a1 - f.a0, fm, f.axis === "z" ? (f.a0 + f.a1) / 2 : f.c, WALL_H - 0.32, f.axis === "z" ? f.c : (f.a0 + f.a1) / 2, { shadow: false });
   }
+}
+
+// ---------- portals (장면을 오가는 문) ----------
+const PORTAL = "#ff4fa3";
+let swirlTex = null;
+function portalSwirl() {
+  if (swirlTex) return swirlTex;
+  swirlTex = canvasTex(256, 256, (x) => {
+    const g = x.createRadialGradient(128, 128, 6, 128, 128, 150);
+    g.addColorStop(0, "#ffffff"); g.addColorStop(0.3, "#ffc2e4"); g.addColorStop(0.7, "#ff4fa3"); g.addColorStop(1, "#8b5cf6");
+    x.fillStyle = g; x.fillRect(0, 0, 256, 256);
+    x.strokeStyle = "rgba(255,255,255,0.6)"; x.lineWidth = 8; x.lineCap = "round";
+    for (let k = 0; k < 4; k++) { x.beginPath(); for (let i = 0; i <= 50; i++) { const a = k * Math.PI / 2 + i * 0.11, r = 10 + i * 2.3; const px = 128 + Math.cos(a) * r, py = 128 + Math.sin(a) * r; if (i) x.lineTo(px, py); else x.moveTo(px, py); } x.stroke(); }
+  });
+  swirlTex.center.set(0.5, 0.5);
+  return swirlTex;
+}
+// 아치 모양 문틀 + 빙글빙글 도는 빛 막. axis "z"면 z=c인 벽(x 방향)에, "x"면 x=c인 벽에 서요.
+// out: 표지판을 벽에서 띄울 거리(+면 z나 x가 커지는 쪽). 벽에 묻혀 잘리지 않게 해요.
+export function portalGate(ctx, axis, c, at, w, label, out = 0) {
+  const g = new THREE.Group(), r = w / 2, post = Math.max(1.1, 2.5 - r), H = post + r;
+  g.position.set(axis === "z" ? at : c, 0, axis === "z" ? c : at);
+  g.rotation.y = axis === "z" ? 0 : Math.PI / 2;
+  const shape = new THREE.Shape();
+  shape.moveTo(-r, 0); shape.lineTo(-r, post); shape.absarc(0, post, r, Math.PI, 0, true); shape.lineTo(r, 0); shape.closePath();
+  const mg = new THREE.ShapeGeometry(shape, 24), uv = mg.attributes.uv, pos = mg.attributes.position;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, (pos.getX(i) + r) / w, pos.getY(i) / H);
+  const membrane = new THREE.Mesh(mg, new THREE.MeshBasicMaterial({ map: portalSwirl(), transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false }));
+  g.add(membrane);
+  const fm = mat(PORTAL, { emissive: new THREE.Color("#a0206a") });
+  for (const sx of [-1, 1]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, post, 12), fm); p.position.set(sx * r, post / 2, 0); p.castShadow = true; g.add(p); }
+  const arch = new THREE.Mesh(new THREE.TorusGeometry(r, 0.13, 10, 28, Math.PI), fm); arch.position.y = post; g.add(arch);
+  for (const sx of [-1, 1]) { const b = new THREE.Mesh(boxGeo(0.4, 0.12, 0.5), mat("#26355e")); b.position.set(sx * r, 0.06, 0); g.add(b); }
+  const sparkM = new THREE.MeshBasicMaterial({ color: "#ffffff" }), sparks = [];
+  for (let i = 0; i < 8; i++) { const sp = new THREE.Mesh(boxGeo(0.09, 0.09, 0.09), sparkM); g.add(sp); sparks.push(sp); }
+  ctx.group.add(g);
+  const sign = signSprite(label, PORTAL, 0.8); sign.position.set(g.position.x + (axis === "x" ? out : 0), H + 0.6, g.position.z + (axis === "z" ? out : 0)); ctx.group.add(sign);
+  const tex = membrane.material.map;
+  ctx.anim.push((t, dt) => {
+    tex.rotation -= dt * 1.6;
+    membrane.material.opacity = 0.82 + Math.sin(t * 3) * 0.08;
+    sparks.forEach((sp, i) => { const a = t * 1.3 + (i / sparks.length) * Math.PI * 2, k = (Math.sin(a) + 1) / 2; sp.position.set(Math.cos(a) * r * 0.85, 0.2 + k * (H - 0.4), (i % 2 ? 1 : -1) * 0.18); sp.rotation.set(t * 2, t * 3, 0); });
+  });
+  return g;
 }
 
 // ---------- floors ----------
@@ -1229,10 +1284,8 @@ export function buildOutdoor(def, opts) {
     void x0; void x1; void z0; void z1;
   }
   for (const d of def.doors) {
-    const s = signSprite(`${d.label} ▶`, "#ff4fa3", 0.75); s.position.set(d.x, 3.2, d.z); G.add(s);
-    const ring = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.1, 32), new THREE.MeshBasicMaterial({ color: "#ff4fa3", transparent: true, opacity: 0.8 }));
-    ring.rotation.x = -Math.PI / 2; ring.position.set(d.x, 0.08, d.z); G.add(ring);
-    ctx.anim.push((t) => { ring.material.opacity = 0.5 + Math.sin(t * 4) * 0.3; });
+    const pt = d.portal;
+    portalGate(ctx, pt.axis, pt.c, pt.at, pt.w, `${d.label} · ${d.verb}`, Math.sign(pt.axis === "z" ? d.z - pt.c : d.x - pt.c) * 1.4);
     ctx.interact.push({ kind: "door", x: d.x, z: d.z, r: d.r, label: d.label, verb: d.verb, to: d.to, spawn: d.spawn });
   }
   // clouds

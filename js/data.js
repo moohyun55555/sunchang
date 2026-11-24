@@ -94,7 +94,7 @@ export const SCENES = {
         desc: "동아리 친구들이 모여 활동하는 방이에요. 커다란 화면과 책상이 있어요." },
       { id: "w1-club2", name: "동아리활동실 2", rect: [21.4, 28.8, 13.2, 20], kind: "club", doors: [{ side: "w", at: 15 }], floor: "wood", color: "#ff9a1a",
         desc: "두 번째 동아리활동실이에요. 모둠 책상을 붙였다 뗐다 하며 쓸 수 있어요." },
-      { id: "w1-vest", name: "방풍실", rect: [6.9, 13.7, 17.4, 20], kind: "vestibule", doors: [{ side: "n", at: 10.3, w: 2.2 }], floor: "mat", color: "#9b7bff", quiz: "w1-vest", quizAt: [12.6, 18.4],
+      { id: "w1-vest", name: "방풍실", rect: [6.9, 13.7, 17.4, 20], signY: 4.6, kind: "vestibule", doors: [{ side: "n", at: 10.3, w: 2.2 }], floor: "mat", color: "#9b7bff", quiz: "w1-vest", quizAt: [12.6, 18.4],
         desc: "정문과 로비 사이의 작은 공간이에요. 바깥바람이 안으로 바로 들어오지 않게 막아 줘요." },
       { id: "w1-cafe", name: "북카페", rect: [13.7, 21.4, 8.8, 20], kind: "books", open: true, floor: "wood", color: "#c98a49", quiz: "w1-cafe", quizAt: [14.8, 10.2],
         desc: "책장과 소파가 있는 1층의 쉼터예요. 책을 읽거나 친구와 이야기를 나눠요." },
@@ -307,7 +307,7 @@ export const SCENES = {
         desc: "운동하기 전에 옷을 갈아입는 여자 탈의실이에요." },
       { id: "e2-gym", name: "실내체육관", rect: [4.5, 22.2, 37, 66.6], kind: "gym", doors: [{ side: "w", at: 41, w: 1.8 }], floor: "gym", color: "#ff9a1a", quiz: "e2-gym", quizAt: [6.2, 39],
         desc: "농구 골대가 있는 넓은 체육관이에요. 농구, 배드민턴, 피구를 해요." },
-      { id: "e2-wait", name: "대기공간", rect: [0, 4.5, 0, 24.6], kind: "waiting", open: true, floor: "wood", color: "#3fd16f",
+      { id: "e2-wait", name: "대기공간", rect: [0, 4.5, 0, 24.6], signAt: [2.25, 19], kind: "waiting", open: true, floor: "wood", color: "#3fd16f",
         desc: "풋살장 옆 쉼터예요. 교류데크로 나가면 자치배움터 2층이에요." },
       { id: "e2-lobby", name: "스포츠동 2층 로비", rects: [[0, 6, 27.4, 37], [6, 22.2, 31.4, 33]], kind: "hall", open: true, noDex: true, floor: "tile" },
       { id: "e2-wait2", name: "대기공간", rect: [0, 4.5, 37, 48], kind: "hall", open: true, noDex: true, floor: "wood" },
@@ -333,9 +333,10 @@ export const SCENES = {
 export const OUTDOOR = {
   name: "창의교육마당", short: "바깥",
   doors: [
-    { x: -4.1, z: -9.4, r: 2.6, label: "자치배움터 정문", verb: "들어가기", to: "w1", spawn: "fromMain" },
-    { x: 15.0, z: -22.4, r: 2.2, label: "부출입구", verb: "들어가기", to: "w1", spawn: "fromSub" },
-    { x: 25.2, z: 3.9, r: 2.4, label: "스포츠동 출입구", verb: "들어가기", to: "e1", spawn: "fromOutside" },
+    // portal: 문 앞에 서는 포탈 (axis "z"면 z=c 벽면, "x"면 x=c 벽면, at은 벽을 따라간 가운데, w는 폭)
+    { x: -4.1, z: -9.4, r: 2.6, label: "자치배움터 정문", verb: "들어가기", to: "w1", spawn: "fromMain", portal: { axis: "z", c: -9.62, at: -4.1, w: 2.8 } },
+    { x: 15.0, z: -22.4, r: 2.2, label: "부출입구", verb: "들어가기", to: "w1", spawn: "fromSub", portal: { axis: "x", c: 14.82, at: -22.4, w: 2.0 } },
+    { x: 25.2, z: 3.9, r: 2.4, label: "스포츠동 출입구", verb: "들어가기", to: "e1", spawn: "fromOutside", portal: { axis: "x", c: 25.62, at: 3.9, w: 2.4 } },
   ],
   spawns: { start: { x: -2, z: -3, face: Math.PI }, fromMain: { x: -4.1, z: -7.8, face: 0 }, fromSub: { x: 16.2, z: -22.4, face: Math.PI / 2 }, fromEast: { x: 24.0, z: 3.9, face: -Math.PI / 2 } },
   zones: [
