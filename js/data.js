@@ -355,7 +355,7 @@ export const OUTDOOR = {
   ],
 };
 
-// 장신구 이름 (처음 화면에서는 야구모자~머리띠 7가지를 골라요)
+// 장신구 이름 (처음 화면에서는 야구모자부터 없음까지 7가지를 골라요)
 export const HATS = {
   none: "없음", cap: "야구모자", bow: "리본", headphones: "헤드폰", sunglasses: "선글라스", eyepatch: "안대", headband: "머리띠",
   crown: "왕관", party: "고깔모자", chef: "요리사 모자", pirate: "해적 모자", banana: "바나나",
