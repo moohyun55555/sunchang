@@ -1,8 +1,8 @@
 // 순창 청소년 자치배움터 탐험대: 장면 전환, 캐릭터 조작, 카메라, 공간 발견, 대화, 퀴즈, 미니게임, 저장
-import { SCENES, OUTDOOR, QUIZZES, GAMES, HATS, COSTUME_HATS, SHIRTS, TOILET_LINES, LEGO_LINES, ELEVATOR_LINES } from "./data.js?v=20261124";
-import { Snd } from "./sfx.js?v=20261124";
-import { MINIGAMES } from "./minigames.js?v=20261124";
-import * as B from "./build.js?v=20261124";
+import { SCENES, OUTDOOR, QUIZZES, GAMES, HATS, COSTUME_HATS, SHIRTS, TOILET_LINES, LEGO_LINES, ELEVATOR_LINES } from "./data.js?v=20261125";
+import { Snd } from "./sfx.js?v=20261125";
+import { MINIGAMES } from "./minigames.js?v=20261125";
+import * as B from "./build.js?v=20261125";
 
 const $ = (s) => document.querySelector(s);
 const loadMsg = $("#loadMsg");
@@ -1064,7 +1064,7 @@ function triggers(dt) {
 function renderTitle() {
   $("#nameInput").value = save.name || "";
   $("#shirts").innerHTML = SHIRTS.map((c, i) => `<button type="button" class="swatch" data-i="${i}" style="--c:${c}" aria-pressed="${i === save.shirt}" aria-label="옷 색 ${i + 1}"></button>`).join("");
-  $("#hats").innerHTML = ["none", "cap", "bow", "headphones"].map((h) => `<button type="button" data-h="${h}" aria-pressed="${h === save.hat}">${HATS[h]}</button>`).join("");
+  $("#hats").innerHTML = ["cap", "bow", "headphones", "sunglasses", "eyepatch", "none", "headband"].map((h) => `<button type="button" data-h="${h}" aria-pressed="${h === save.hat}">${HATS[h]}</button>`).join("");
   $("#shirts").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { save.shirt = +b.dataset.i; persist(); buildPlayer(); renderTitle(); }));
   $("#hats").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { save.hat = b.dataset.h; persist(); buildPlayer(); renderTitle(); }));
   const has = save.rooms.length > 0;
@@ -1133,4 +1133,4 @@ renderTitle();
 $("#title").hidden = false;
 $("#loading").classList.add("done");
 requestAnimationFrame((t) => { last = t; frame(t); });
-window.__game = { S, save, pBody, cam, enterScene, act, openQuiz, startGame, startRace, startPenalty, getScene, DEX, player, world, renderer, JOY };
+window.__game = { S, save, pBody, cam, enterScene, act, openQuiz, startGame, startRace, startPenalty, getScene, DEX, player, world, renderer, JOY, buildPlayer };

@@ -229,6 +229,19 @@ export function setHat(av, hat, color = "#ffc93c") {
   if (hat === "goggles") { B(0.56, 0.06, 0.56, "#333", 0, 1.83, 0); B(0.14, 0.12, 0.06, "#6fd3ff", -0.1, 1.82, 0.27); B(0.14, 0.12, 0.06, "#6fd3ff", 0.1, 1.82, 0.27); }
   if (hat === "helmet") { B(0.62, 0.24, 0.62, mat(color), 0, 1.86, 0); B(0.5, 0.06, 0.2, mat(color), 0, 1.86, 0.36); }
   if (hat === "headband") { B(0.55, 0.08, 0.55, mat(color), 0, 1.8, 0); }
+  if (hat === "sunglasses") {
+    const lens = mat("#151a2b", { roughness: 0.15, metalness: 0.4 }), frame = "#1e1e1e";
+    for (const sx of [-1, 1]) { B(0.15, 0.1, 0.03, lens, sx * 0.085, 1.675, 0.27); B(0.035, 0.022, 0.012, "#ffffff", sx * 0.085 + 0.035, 1.735, 0.287); B(0.02, 0.025, 0.27, frame, sx * 0.268, 1.715, 0.13); }
+    B(0.05, 0.025, 0.03, frame, 0, 1.712, 0.272);
+  }
+  if (hat === "eyepatch") {
+    // 해적 선장 안대: 한쪽 눈을 덮고, 끈이 이마를 비스듬히 지나 반대쪽 귀 위로 가요
+    const black = mat("#141414");
+    B(0.15, 0.13, 0.03, black, 0.085, 1.66, 0.268);
+    const strap = new THREE.Mesh(new THREE.TorusGeometry(0.272, 0.018, 6, 40), black);
+    strap.rotation.order = "ZYX"; strap.rotation.set(Math.PI / 2, 0, -0.38); strap.position.y = 1.757;
+    hatG.add(strap);
+  }
   av.userData.hat = hat;
 }
 // 롤러스케이트: 다리 끝에 신발과 바퀴를 달아요. 신은 동안은 캐릭터를 SKATE_LIFT만큼 띄워야 바퀴가 바닥에 닿아요.
