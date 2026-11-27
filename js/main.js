@@ -1,8 +1,8 @@
 // 순창 청소년 자치배움터 탐험대: 장면 전환, 캐릭터 조작, 카메라, 공간 발견, 대화, 퀴즈, 미니게임, 저장
-import { SCENES, OUTDOOR, QUIZZES, GAMES, HATS, COSTUME_HATS, SHIRTS, TOILET_LINES, LEGO_LINES, ELEVATOR_LINES } from "./data.js?v=20261127";
-import { Snd } from "./sfx.js?v=20261127";
-import { MINIGAMES } from "./minigames.js?v=20261127";
-import * as B from "./build.js?v=20261127";
+import { SCENES, OUTDOOR, QUIZZES, GAMES, HATS, COSTUME_HATS, SHIRTS, TOILET_LINES, LEGO_LINES, ELEVATOR_LINES } from "./data.js?v=20261127b";
+import { Snd } from "./sfx.js?v=20261127b";
+import { MINIGAMES } from "./minigames.js?v=20261127b";
+import * as B from "./build.js?v=20261127b";
 
 const $ = (s) => document.querySelector(s);
 const loadMsg = $("#loadMsg");
@@ -353,7 +353,7 @@ function act() {
     say(at, `${HATS[save.hat]} 착용! 잘 어울려요. 한 번 더 누르면 다른 모자예요.`);
     return;
   }
-  if (it.gag === "mic") { Snd.squeal(); say(at, `삐이이— 아아, 마이크 테스트! 지금 롤러장에 계신 ${playerName()} 어린이, 오늘 정말 멋져요!`); return; }
+  if (it.gag === "mic") { Snd.squeal(); say(at, `삐이이— 아아, 마이크 테스트! 지금 스케이트장에 계신 ${playerName()} 어린이, 오늘 정말 멋져요!`); return; }
   Snd.pop();
   say(at, pick(it.lines));
 }
@@ -616,7 +616,7 @@ function startRace() {
   B.setSkates(player.avatar, true, "#2fb2ff");
   showMarkers(false);
   S.sport = { type: "race", t: -3.5, time: 0, k: 0, L, rk, rings, rival: 0, gp, freeze: true, lastCount: 4 };
-  sportMsg(`롤러 레이스 · 빛나는 고리를 차례로 지나 두 바퀴!<br><small>스케이트는 미끄러워요. ${touchMode ? "조이스틱을 앞으로 밀어 달리고, 코너 앞에서는 뒤로 당겨" : "↑로 달리고, 코너 앞에서는 ↓로"} 속도를 줄여요!</small>`, "준비");
+  sportMsg(`인라인 레이스 · 빛나는 고리를 차례로 지나 두 바퀴!<br><small>스케이트는 미끄러워요. ${touchMode ? "조이스틱을 앞으로 밀어 달리고, 코너 앞에서는 뒤로 당겨" : "↑로 달리고, 코너 앞에서는 ↓로"} 속도를 줄여요!</small>`, "준비");
 }
 function updateRace(dt) {
   const sp = S.sport;
@@ -635,7 +635,7 @@ function updateRace(dt) {
       if (sp.k % 8 === 0 && sp.k < 16) { toast("한 바퀴 완료! 마지막 바퀴!"); Snd.ok(); }
       if (sp.k >= 16) { finishRace(); return; }
     }
-    $("#spMain").innerHTML = `롤러 레이스 · <b>${Math.min(2, Math.floor(sp.k / 8) + 1)}/2바퀴</b> · <b>${sp.time.toFixed(1)}초</b>`;
+    $("#spMain").innerHTML = `인라인 레이스 · <b>${Math.min(2, Math.floor(sp.k / 8) + 1)}/2바퀴</b> · <b>${sp.time.toFixed(1)}초</b>`;
     if (Math.hypot(p.x - 13.9, p.z - 37) > 30) { toast("트랙을 벗어나서 레이스를 멈췄어요."); stopSport(); return; }
   }
   sp.rings.forEach((r, i) => {
@@ -1088,7 +1088,7 @@ function controlPlayer(dt, active) {
   const fx = -Math.sin(cam.yaw), fz = -Math.cos(cam.yaw), rx = Math.cos(cam.yaw), rz = -Math.sin(cam.yaw);
   const dx = rx * ix - fx * iz, dz = rz * ix - fz * iz;
   if (racing) {
-    // 롤러스케이트: 미는 만큼 천천히 빨라지고, 손을 떼도 쭉 미끄러져요. 반대로 당기면 브레이크.
+    // 인라인 스케이트: 미는 만큼 천천히 빨라지고, 손을 떼도 쭉 미끄러져요. 반대로 당기면 브레이크.
     const v = pBody.velocity, sp = Math.hypot(v.x, v.z);
     const braking = sp > 0.5 && dx * v.x + dz * v.z < 0;
     const acc = (braking ? SKATE.brake : SKATE.acc) * (g ? 1 : 0.3);

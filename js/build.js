@@ -1229,7 +1229,7 @@ export function buildOutdoor(def, opts) {
   ctx.occ.push(bx(ctx, 2.2, 3.4, 7.2, eastM, E.x0 - 1.1, 0, 3.9, { solid: true }));
   bx(ctx, 0.1, 2.8, 3.0, P.doorGlass, E.x0 - 2.22, 0, 3.9, { shadow: false });
   {
-    const sm = new THREE.MeshStandardMaterial({ color: "#ffffff", map: signTex("롤러스케이트장 · 풋살장 · 실내체육관", P.stripe, "#ffffff", 1600, 170) }), so = mat(P.stripe);
+    const sm = new THREE.MeshStandardMaterial({ color: "#ffffff", map: signTex("인라인 스케이트장 · 풋살장 · 실내체육관", P.stripe, "#ffffff", 1600, 170) }), so = mat(P.stripe);
     const m = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.5, 14), [so, sm, so, so, so, so]); m.position.set(E.x0 - 0.15, 11.2, 6); G.add(m);
     const pm = new THREE.InstancedMesh(new THREE.BoxGeometry(3.0, 0.08, 1.8), mat(P.panel), 6 * 17);
     const m4 = new THREE.Matrix4(), q = new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.3, 0, 0)), sc = new THREE.Vector3(1, 1, 1), ps = new THREE.Vector3();

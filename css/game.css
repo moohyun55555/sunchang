@@ -1,5 +1,5 @@
 /* 게임의 모든 글씨는 이 글꼴 하나로 써요: 주아체(OFL) + 주아체에 없는 기호(· … ▲▼ 화살표 등)를 같은 굵기로 그려 넣은 파일 */
-@font-face { font-family: "SunchangJua"; src: url("../fonts/jua.woff2?v=20261127") format("woff2"); font-display: block; }
+@font-face { font-family: "SunchangJua"; src: url("../fonts/jua.woff2?v=20261127b") format("woff2"); font-display: block; }
 :root {
   /* Layout: full-bleed 3D stage; chunky toy-like panels pinned to the corners; modal cards centered */
   --sky: #a6defc;
