@@ -1,4 +1,4 @@
-// 2D 미니게임 다섯 가지: 레고 블록 쌓기, 리듬 댄스, 떡볶이 재료 받기, 로봇 길 찾기, 드럼 따라 치기
+// 2D 미니게임 다섯 가지: 레고 블록 쌓기, 리듬 댄스, 떡볶이 재료 받기, 로봇 길 찾기, 드럼 비트 따라 치기
 // 각 게임은 stage(div)에 그림을 그리고, 끝나면 api.end(점수)를 불러요. 돌려주는 함수는 정리(cleanup)용이에요.
 const FONT = '"SunchangJua", sans-serif'; // 게임 글씨는 모두 fonts/jua.woff2 하나로 그려요
 function makeCanvas(stage, W, H) {
@@ -274,44 +274,127 @@ function code(stage, api) {
   return () => stopKeys();
 }
 
-// ---------- 5. 드럼 따라 치기 ----------
+// ---------- 5. 드럼 비트 따라 치기 ----------
+// 진짜 드럼 연습처럼: 박자 세기(하나 둘 셋 넷) → 시범 한 마디 듣기 → 두 마디 같이 치기.
+// 4비트 → 8비트 → 16비트로 하이햇이 촘촘해져요. 한 단계마다 60% 넘게 맞히면 다음 비트로!
+const DRUM_STAGES = [
+  { name: "4비트", bpm: 92, tip: "하이햇은 한 박에 한 번 '치'. 킥(쿵)은 1·3박, 스네어(짝)는 2·4박이에요.", hh: [0, 4, 8, 12], sn: [4, 12], kk: [0, 8] },
+  { name: "8비트", bpm: 88, tip: "하이햇이 두 배! 한 박에 두 번 '치키치키'. 킥은 1박·3박·3박 반, 스네어는 2·4박.", hh: [0, 2, 4, 6, 8, 10, 12, 14], sn: [4, 12], kk: [0, 8, 10] },
+  { name: "16비트", bpm: 72, tip: "하이햇을 한 박에 네 번! 진짜 드러머처럼 두 손가락(→ ↑)으로 번갈아 쳐요.", hh: [...Array(16).keys()], sn: [4, 12], kk: [0, 6, 8] },
+];
 function drum(stage, api) {
-  const NAMES = [["쿵", "큰북", "#ef4444", "←"], ["짝", "작은북", "#3b82f6", "↓"], ["칫", "하이햇", "#22c55e", "↑"], ["챙", "심벌", "#f59e0b", "→"]];
-  const wrap = document.createElement("div"); wrap.className = "drum-wrap";
-  wrap.innerHTML = `<div class="drum-msg" aria-live="polite"></div><div class="drum-pads">${NAMES.map(([s, n, c, k], i) => `<button type="button" data-i="${i}" style="--pad:${c}"><b>${s}</b><span>${n} · ${k}</span></button>`).join("")}</div>`;
-  stage.appendChild(wrap);
-  const msgEl = wrap.querySelector(".drum-msg"), pads = [...wrap.querySelectorAll("button")];
-  let seq = [], idx = 0, state = "listen", timers = [], over = false;
-  const later = (fn, ms) => timers.push(setTimeout(fn, ms));
-  function flash(i) { pads[i].classList.add("hit"); api.Snd.drum(i); setTimeout(() => pads[i].classList.remove("hit"), 220); }
-  function next() {
-    seq.push(Math.floor(Math.random() * 4));
-    state = "listen"; idx = 0;
-    msgEl.textContent = `${seq.length}단계 · 잘 들어 보세요!`;
-    seq.forEach((p, k) => later(() => flash(p), 650 + k * 560));
-    later(() => { state = "play"; msgEl.textContent = "이제 따라 쳐요!"; }, 650 + seq.length * 560);
+  const Snd = api.Snd, W = 360, H = 300, HIT = 66, PX = 150;
+  // 위에서부터 하이햇·스네어·킥: 드럼 악보와 같은 순서예요
+  const LANES = [
+    { name: "하이햇", s: "치", c: "#22c55e", y: 132, snd: 2 },
+    { name: "스네어", s: "짝", c: "#3b82f6", y: 192, snd: 1 },
+    { name: "킥", s: "쿵", c: "#ef4444", y: 252, snd: 0 },
+  ];
+  const { x } = makeCanvas(stage, W, H);
+  const pads = document.createElement("div"); pads.className = "mg-pads drum-kit";
+  for (const [lane, key] of [[2, "←"], [1, "↓"], [0, "→ ↑"]]) {
+    const L = LANES[lane], b = document.createElement("button");
+    b.type = "button"; b.style.background = L.c; b.innerHTML = `<b>${L.s}</b><small>${L.name} ${key}</small>`;
+    b.addEventListener("pointerdown", (e) => { e.preventDefault(); hit(lane); });
+    pads.appendChild(b); L.btn = b;
   }
-  function press(i) {
-    if (state !== "play" || over) return;
-    flash(i);
-    if (i !== seq[idx]) {
-      over = true; state = "done"; api.Snd.no();
-      msgEl.textContent = "앗, 박자가 꼬였어요! 그래도 멋진 연주였어요.";
-      later(() => api.end(seq.length - 1), 1300);
-      return;
+  stage.appendChild(pads);
+  let si = -1, cleared = 0, st = null, notes = [], pops = [], over = false, result = null;
+  const flash = (lane) => { const b = LANES[lane].btn; b.classList.add("hit"); setTimeout(() => b.classList.remove("hit"), 120); LANES[lane].glow = 1; };
+  function startStage() {
+    si++;
+    const S0 = DRUM_STAGES[si], beat = 60 / S0.bpm, bar = beat * 4, t0 = Snd.now() + 3.0;
+    st = { ...S0, beat, bar, t0, demo: t0 + bar, play: t0 + bar * 2, end: t0 + bar * 4, perfect: 0, good: 0, judged: false };
+    notes = [];
+    for (let b = 0; b < 3; b++) {
+      const start = st.demo + b * bar, auto = b === 0;
+      for (const [lane, steps] of [[0, S0.hh], [1, S0.sn], [2, S0.kk]]) for (const k of steps) notes.push({ t: start + k * beat / 4, lane, auto, done: false, res: "" });
     }
-    idx++;
-    if (idx === seq.length) {
-      state = "listen";
-      if (seq.length >= 9) { msgEl.textContent = "완벽해요! 밴드 드러머로 임명합니다!"; api.Snd.ok(); later(() => api.end(seq.length), 1200); return; }
-      msgEl.textContent = "좋아요!"; api.Snd.pop();
-      later(next, 800);
+    notes.sort((p, q) => p.t - q.t);
+    if (Snd.ctx) {
+      for (let k = 0; k < 4; k++) Snd.tone(k ? 1400 : 1900, k ? 1400 : 1900, 0.04, "square", 0.06, t0 + k * beat);
+      for (const n of notes) if (n.auto) Snd.drum(LANES[n.lane].snd, n.t);
+      const bass = [98, 98, 130.8, 116.5];
+      for (let b = 0; b < 3; b++) for (const k of [0, 2]) { const f = bass[(b * 2 + k / 2) % 4]; Snd.tone(f, f, beat * 1.7, "triangle", 0.13, st.demo + b * bar + k * beat); }
+      for (let k = 0; k < 8; k++) Snd.tone(1500, 1500, 0.02, "square", 0.012, st.play + k * beat);
     }
   }
-  pads.forEach((b) => b.addEventListener("pointerdown", (e) => { e.preventDefault(); press(+b.dataset.i); }));
-  const stopKeys = onKeys({ ArrowLeft: () => press(0), ArrowDown: () => press(1), ArrowUp: () => press(2), ArrowRight: () => press(3), Digit1: () => press(0), Digit2: () => press(1), Digit3: () => press(2), Digit4: () => press(3) });
-  later(next, 400);
-  return () => { stopKeys(); timers.forEach(clearTimeout); };
+  function hit(lane) {
+    if (over) return;
+    Snd.drum(LANES[lane].snd);
+    flash(lane);
+    if (!st) return;
+    const now = Snd.now();
+    let best = null, bd = 0.15;
+    for (const n of notes) if (!n.auto && !n.done && n.lane === lane && Math.abs(n.t - now) < bd) { bd = Math.abs(n.t - now); best = n; }
+    if (!best) return;
+    best.done = true;
+    if (bd < 0.06) { st.perfect++; best.res = "p"; pops.push({ s: "딱 맞아요!", c: "#ffd91a", y: LANES[lane].y - 30, t: 0.5 }); }
+    else { st.good++; best.res = "g"; pops.push({ s: "좋아요", c: "#ffffff", y: LANES[lane].y - 30, t: 0.5 }); }
+  }
+  function wrap(s, maxW, size) {
+    x.font = `${size}px ${FONT}`;
+    const out = []; let line = "";
+    for (const w of s.split(" ")) { const t = line ? line + " " + w : w; if (x.measureText(t).width > maxW && line) { out.push(line); line = w; } else line = t; }
+    if (line) out.push(line);
+    return out;
+  }
+  const stopKeys = onKeys({ ArrowLeft: () => hit(2), KeyD: () => hit(2), ArrowDown: () => hit(1), KeyF: () => hit(1), ArrowRight: () => hit(0), ArrowUp: () => hit(0), KeyJ: () => hit(0), KeyK: () => hit(0) });
+  const stop = loop((dt) => {
+    const now = Snd.now();
+    x.fillStyle = "#1e2a4a"; x.fillRect(0, 0, W, H);
+    if (st) {
+      for (const n of notes) if (!n.auto && !n.done && now - n.t > 0.16) { n.done = true; n.res = "m"; pops.push({ s: "놓쳤어요", c: "#94a3b8", y: LANES[n.lane].y - 30, t: 0.4 }); }
+      for (const n of notes) if (n.auto && !n.flashed && now >= n.t) { n.flashed = true; flash(n.lane); }
+      // 박자 선: 마디 첫 박은 굵게, 위에 1 2 3 4
+      for (let b = 0; b < 12; b++) {
+        const tb = st.demo + b * st.beat, bx = HIT + (tb - now) * PX;
+        if (bx < 20 || bx > W + 10) continue;
+        x.fillStyle = b % 4 === 0 ? "rgba(255,255,255,.35)" : "rgba(255,255,255,.12)"; x.fillRect(bx - (b % 4 === 0 ? 1.5 : 0.5), 104, b % 4 === 0 ? 3 : 1, 176);
+        textC(x, String((b % 4) + 1), bx, 94, 15, b % 4 === 0 ? "#ffd91a" : "rgba(255,255,255,.6)");
+      }
+      for (const L of LANES) {
+        L.glow = Math.max(0, (L.glow || 0) - dt * 5);
+        x.strokeStyle = L.c; x.lineWidth = 3; x.fillStyle = `rgba(255,255,255,${0.08 + L.glow * 0.35})`;
+        x.beginPath(); x.arc(HIT, L.y, 22, 0, 7); x.fill(); x.stroke();
+        textC(x, L.name, 22, L.y - 30, 12, L.c);
+      }
+      for (const n of notes) {
+        if (n.done && n.res !== "m") continue;
+        const nx = HIT + (n.t - now) * PX;
+        if (nx < -20 || nx > W + 20 || (n.auto && now > n.t + 0.1)) continue;
+        const L = LANES[n.lane];
+        x.globalAlpha = n.auto ? 0.45 : n.res === "m" ? 0.35 : 1;
+        x.fillStyle = n.res === "m" ? "#64748b" : L.c; x.beginPath(); x.arc(nx, L.y, 17, 0, 7); x.fill();
+        textC(x, L.s, nx, L.y + 1, 17, "#ffffff");
+        x.globalAlpha = 1;
+      }
+      // 안내 글씨
+      let head = "", big = "";
+      if (now < st.t0) head = `${st.name} · ${st.bpm} BPM`;
+      else if (now < st.demo) big = ["하나", "둘", "셋", "넷"][Math.min(3, Math.floor((now - st.t0) / st.beat))];
+      else if (now < st.play) head = "시범을 잘 들어 보세요";
+      else if (now < st.end) head = "이제 같이 쳐요!";
+      if (head) textC(x, head, W / 2, 26, 22, "#ffd91a");
+      if (now < st.t0) wrap(st.tip, W - 40, 15).forEach((l, i) => textC(x, l, W / 2, 54 + i * 20, 15, "#ffffff"));
+      if (big) textC(x, big, W / 2, 50, 40, "#ffffff", "#000");
+      if (!st.judged && now > st.end + 0.3) {
+        st.judged = true;
+        const total = notes.filter((n) => !n.auto).length, acc = Math.round(((st.perfect + st.good * 0.75) / total) * 100);
+        if (acc >= 60) { cleared++; Snd.drum(3); Snd.ok(); result = { s: `${st.name} 성공! ${acc}%`, sub: ["드러머 데뷔!", "옆 반까지 들썩들썩!", "박자가 딱딱 맞아요!"][si], t: 2.2 }; }
+        else { Snd.no(); result = { s: `아쉬워요! ${acc}%`, sub: "박자가 잠깐 산책을 나갔어요…", t: 2.2 }; }
+        const passed = acc >= 60;
+        setTimeout(() => { if (over) return; if (passed && si < DRUM_STAGES.length - 1) { result = null; startStage(); } else { over = true; api.end(cleared); } }, 2300);
+      }
+      if (result) { textC(x, result.s, W / 2, 30, 26, "#ffd91a", "#000"); textC(x, result.sub, W / 2, 62, 16, "#ffffff"); }
+    }
+    for (const p of pops) { p.t -= dt; p.y -= dt * 30; textC(x, p.s, HIT + 70, p.y, 16, p.c, "#000"); }
+    pops = pops.filter((p) => p.t > 0);
+  });
+  startStage();
+  stage.drumState = () => ({ notes, now: Snd.now(), stage: si, cleared }); // 자동 테스트용
+  api.setQuit(() => { over = true; api.end(cleared); });
+  return () => { over = true; stop(); stopKeys(); };
 }
 
 export const MINIGAMES = { stack, rhythm, cook, code, drum };

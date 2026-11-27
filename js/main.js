@@ -1,8 +1,8 @@
 // 순창 청소년 자치배움터 탐험대: 장면 전환, 캐릭터 조작, 카메라, 공간 발견, 대화, 퀴즈, 미니게임, 저장
-import { SCENES, OUTDOOR, QUIZZES, GAMES, HATS, COSTUME_HATS, SHIRTS, TOILET_LINES, LEGO_LINES, ELEVATOR_LINES } from "./data.js?v=20261125b";
-import { Snd } from "./sfx.js?v=20261125b";
-import { MINIGAMES } from "./minigames.js?v=20261125b";
-import * as B from "./build.js?v=20261125b";
+import { SCENES, OUTDOOR, QUIZZES, GAMES, HATS, COSTUME_HATS, SHIRTS, TOILET_LINES, LEGO_LINES, ELEVATOR_LINES } from "./data.js?v=20261127";
+import { Snd } from "./sfx.js?v=20261127";
+import { MINIGAMES } from "./minigames.js?v=20261127";
+import * as B from "./build.js?v=20261127";
 
 const $ = (s) => document.querySelector(s);
 const loadMsg = $("#loadMsg");
@@ -662,80 +662,210 @@ function finishRace() {
   sportMsg(`${sp.time.toFixed(1)}초 · ${"★".repeat(stars)}${"☆".repeat(3 - stars)}<br><small>${line}</small>`, win ? "1등!" : "완주!");
   setTimeout(() => { if (S.sport === sp) stopSport(); }, 4200);
 }
+// ---------- 승부차기: 먼저 내가 5번 차고, 다음엔 골키퍼가 되어 5번 막아요 ----------
+// 왼쪽·가운데·오른쪽 중 하나를 골라 상대와 눈치 싸움! 방향을 맞히면 대부분 막고, 틀리면 대부분 골이에요.
+const PK_TO = { "-1": "왼쪽으로", "0": "가운데로", "1": "오른쪽으로" };
+const pkCount = (a) => a.filter(Boolean).length;
+function pkBoard(sp) {
+  const row = (arr) => Array.from({ length: Math.max(5, arr.length) }, (_, i) => (i < arr.length ? (arr[i] ? '<b class="pk-o">O</b>' : '<b class="pk-x">X</b>') : '<b class="pk-n">-</b>')).join("");
+  return `<div class="pk-board"><span>나</span>${row(sp.me)}<em>${pkCount(sp.me)}</em></div><div class="pk-board"><span>골대지기</span>${row(sp.cpu)}<em>${pkCount(sp.cpu)}</em></div>`;
+}
+function pkPanel(sp, title, hint, buttons) {
+  const btns = buttons ? '<div class="pk-btns"><button type="button" data-d="-1">← 왼쪽</button><button type="button" data-d="0">가운데 ↑</button><button type="button" data-d="1">오른쪽 →</button></div>' : "";
+  sportMsg(`${title}${pkBoard(sp)}${btns}${hint ? `<small>${hint}</small>` : ""}`);
+  if (buttons) $("#spMain").querySelectorAll("[data-d]").forEach((b) => b.addEventListener("pointerdown", (e) => { e.preventDefault(); e.stopPropagation(); pkPick(+b.dataset.d); }));
+}
+const pkLater = (sp, sec, fn) => { sp.wait = sec; sp.next = fn; };
+function pkSay(sp, text) { if (sp.keeper) say(new THREE.Vector3(sp.keeper.pos.x, 2.3, sp.keeper.pos.z), text, "골대지기"); }
+function pkPose(target, side, k) {
+  // side: 몸을 날리는 쪽(월드 x 방향 -1/0/1), k: 0~1 진행도. 가운데면 제자리에서 팔을 들고 점프해요.
+  target.roll = side ? -side * 1.25 * k : 0;
+  target.raise = side ? Math.sin(Math.PI * Math.min(1, k) * 0.5) * 0.25 : Math.sin(Math.PI * k) * 0.45;
+  target.air = k > 0.02;
+  return side * 0.8 * k;
+}
+function pkBallAt(sp, x, y, z) { const b = sp.ball.body; b.position.set(x, y, z); b.velocity.set(0, 0, 0); b.angularVelocity.set(0, 0, 0); sp.ball.mesh.position.set(x, y, z); }
+function pkBallTo(sp, p1, T, apex, onEnd) { const b = sp.ball.body.position; sp.seg = { p0: { x: b.x, y: b.y, z: b.z }, p1, T, apex, t: 0, onEnd }; }
 function startPenalty() {
   const g = S.cur.special.goal, ball = S.cur.special.pball;
   if (!g || !ball) return;
   endTalk();
   showMarkers(false);
-  S.sport = { type: "penalty", shot: 0, goals: 0, phase: "aim", t: 0, aim: 0, power: 0, kx: g.cx, kTarget: g.cx, g, ball, keeper: S.cur.npcs.find((n) => n.d.id === "keeper"), freeze: true, judged: false };
-  resetShot();
+  ball.body.type = CANNON.Body.KINEMATIC;
+  const keeper = S.cur.npcs.find((n) => n.d.id === "keeper");
+  S.sport = { type: "penalty", g, ball, keeper, freeze: true, role: "kick", me: [], cpu: [], hist: [], keepHist: [], sd: 0, phase: "intro", t: 0, pick: null, wait: 0, next: null, seg: null, dive: null, net: 0 };
+  const sp = S.sport;
+  pkBallAt(sp, g.cx, 0.35, g.spot);
+  pBody.position.set(g.cx - 0.9, 0.08, g.spot + 1.1); pBody.velocity.set(0, 0, 0); player.face = Math.PI - 0.6;
+  if (keeper) { keeper.pos.set(g.cx, 0, g.z + 0.55); keeper.face = 0; }
+  sportMsg("승부차기! 먼저 내가 5번 차고, 그다음엔 골키퍼가 되어 5번 막아요.<br><small>왼쪽·가운데·오른쪽 중 하나를 골라 골대지기와 눈치 싸움!</small>", "승부차기");
+  pkLater(sp, 2.4, () => { $("#spBig").textContent = ""; pkSetupKick(sp); });
 }
-function resetShot() {
-  const sp = S.sport, g = sp.g, b = sp.ball.body;
-  b.position.set(g.cx, 0.35, g.spot); b.velocity.set(0, 0, 0); b.angularVelocity.set(0, 0, 0); b.wakeUp();
-  pBody.position.set(g.cx - 0.85, 0.08, g.spot + 1.0); pBody.velocity.set(0, 0, 0);
-  player.face = Math.PI - 0.5;
-  sp.phase = "aim"; sp.t = 0; sp.judged = false; sp.kTarget = g.cx;
-  sportMsg(`승부차기 <b>${sp.shot + 1}/5</b> · 골 <b>${sp.goals}</b><div class="bar aim"><i id="spAim"></i></div><small>지금이다 싶을 때 F (또는 F 버튼)로 조준!</small>`);
+function pkSetupKick(sp) {
+  const g = sp.g;
+  sp.role = "kick"; sp.phase = "aim"; sp.pick = null; sp.t = 0; sp.dive = null;
+  pkBallAt(sp, g.cx, 0.35, g.spot);
+  pBody.position.set(g.cx - 0.9, 0.08, g.spot + 1.1); pBody.velocity.set(0, 0, 0); player.face = Math.PI - 0.6;
+  Object.assign(player, { roll: 0, raise: 0, air: false });
+  if (sp.keeper) { sp.keeper.pos.set(g.cx, 0, g.z + 0.55); sp.keeper.face = 0; Object.assign(sp.keeper, { roll: 0, raise: 0, air: false }); }
+  pkSay(sp, pick(["어디로 찰지 다 보여~", "흐흐, 눈빛을 보니 오른쪽이구나?", "왼쪽? 가운데? 거미손은 다 막는다!", "가운데로 차면… 아, 이건 비밀!"]));
+  pkPanel(sp, sp.sd ? `서든데스! 내가 찰 차례` : `내가 찰 차례 <b>${sp.me.length + 1}/5</b>`, "어느 쪽으로 찰까요? 골대지기 말은 믿지 마세요!", true);
 }
-function sportAction() {
+function pkSetupKeep(sp) {
+  const g = sp.g;
+  sp.role = "keep"; sp.phase = "ready"; sp.pick = null; sp.t = 0; sp.dive = null; sp.runT = 2.2 + Math.random() * 1.2;
+  pkBallAt(sp, g.cx, 0.35, g.spot);
+  pBody.position.set(g.cx, 0.08, g.z + 0.55); pBody.velocity.set(0, 0, 0); player.face = 0;
+  Object.assign(player, { roll: 0, raise: 0, air: false });
+  if (sp.keeper) { sp.keeper.pos.set(g.cx + 0.9, 0, g.spot + 1.6); sp.keeper.face = Math.PI; Object.assign(sp.keeper, { roll: 0, raise: 0, air: false }); }
+  pkSay(sp, pick(["이번엔 진짜 왼쪽으로 찬다! …아마도?", "어디로 갈지 맞혀 봐~", "내 발은 고추장보다 맵다구!", "눈 감으면 안 돼!"]));
+  pkPanel(sp, sp.sd ? `서든데스! 내가 막을 차례` : `내가 막을 차례 <b>${sp.cpu.length + 1}/5</b>`, "공이 올 쪽을 미리 골라요! 고르지 않으면 가운데에 서 있어요.", true);
+}
+function pkPick(d) {
   const sp = S.sport;
   if (!sp || sp.type !== "penalty") return;
-  if (sp.phase === "aim") {
-    sp.phase = "power"; sp.t = 0; Snd.tick();
-    sportMsg(`승부차기 <b>${sp.shot + 1}/5</b> · 골 <b>${sp.goals}</b><div class="bar power"><i id="spPow"></i></div><small>힘이 알맞을 때 F를 눌러 슛!</small>`);
-  } else if (sp.phase === "power") {
-    const g = sp.g, b = sp.ball.body, tx = g.cx + sp.aim * 1.45, ty = 0.35 + sp.power * 1.4, tz = g.z - 0.6;
-    const dx = tx - b.position.x, dy = ty - b.position.y, dz = tz - b.position.z, len = Math.hypot(dx, dy, dz), spd = 12 + sp.power * 7;
-    b.velocity.set((dx / len) * spd, (dy / len) * spd + 2.2 * sp.power, (dz / len) * spd);
-    b.angularVelocity.set(-8, 0, 0);
-    Snd.kick();
-    const r = Math.random(), side = sp.aim >= 0 ? 1 : -1;
-    sp.kTarget = r < 0.38 ? g.cx + side * 1.15 : r < 0.72 ? g.cx - side * 1.15 : g.cx;
-    sp.phase = "fly"; sp.t = 0;
-    sportMsg(`승부차기 <b>${sp.shot + 1}/5</b> · 골 <b>${sp.goals}</b>`);
+  if (sp.role === "kick" && sp.phase === "aim") { sp.pick = d; sp.phase = "runup"; sp.t = 0; endTalk(); Snd.tick(); pkPanel(sp, `${PK_TO[d]} 슛!`, "", false); }
+  else if (sp.role === "keep" && sp.phase === "ready" && sp.pick === null) { sp.pick = d; Snd.tick(); pkPanel(sp, `${PK_TO[d]} 몸을 날릴 준비!`, "골대지기가 곧 차요…", false); }
+}
+function sportAction() { if (S.sport && S.sport.type === "penalty") pkPick(0); }
+// 화면에서 본 왼쪽·오른쪽을 실제 x 방향으로: 찰 때는 화면 오른쪽이 +x, 막을 때(골대 뒤에서 볼 때)는 -x예요
+const pkWorld = (sp, d) => (sp.role === "kick" ? d : -d);
+function pkShoot(sp, side, diveSide) {
+  // side: 공이 가는 쪽, diveSide: 골키퍼가 몸을 날리는 쪽 (둘 다 월드 x 방향)
+  const g = sp.g, right = side === diveSide, saved = right && Math.random() < (side === 0 ? 0.9 : 0.85), post = !saved && side !== 0 && Math.random() < 0.06;
+  const tx = g.cx + (side ? side * (0.95 + Math.random() * 0.25) : (Math.random() - 0.5) * 0.5), ty = 0.45 + Math.random() * 0.9;
+  sp.dive = { side: diveSide, t: -0.08 };
+  sp.phase = "fly";
+  Snd.kick();
+  const mine = sp.role === "kick";
+  const finish = (scored, big, line) => {
+    (mine ? sp.me : sp.cpu).push(scored);
+    $("#spBig").textContent = big;
+    pkSay(sp, line);
+    pkPanel(sp, mine ? (scored ? "골인!" : "아쉬워요!") : scored ? "골을 먹었어요…" : "막아 냈어요!", "", false);
+    pkLater(sp, 2.0, () => pkNext(sp));
+  };
+  if (saved) {
+    pkBallTo(sp, { x: g.cx + side * 0.9, y: Math.min(ty, 1.2), z: g.z + 0.5 }, 0.5, 0.25, () => {
+      Snd.kick(); S.shake = 0.25;
+      if (!mine) { Snd.ok(); confetti(30); }
+      finish(false, mine ? "막혔다!" : "선방!!!", mine ? pick(["순창의 거미손이 막았다!", "흐흐, 내 손은 고추장보다 끈끈하지!"]) : pick(["으앗, 그걸 막아?!", "너 골키퍼 해도 되겠다!"]));
+      pkBallTo(sp, { x: g.cx + (side || (Math.random() < 0.5 ? -1 : 1)) * 2.6, y: 0.35, z: g.z + 3.6 }, 0.7, 1.4);
+    });
+  } else if (post) {
+    pkBallTo(sp, { x: g.cx + side * 1.5, y: ty, z: g.z + 0.05 }, 0.5, 0.25, () => {
+      Snd.ding(); S.shake = 0.15;
+      finish(false, "땡! 골대!", mine ? "휴, 살았다! 골대가 막아 줬어!" : "으악, 골대야 왜 그래!");
+      pkBallTo(sp, { x: g.cx + side * 3.0, y: 0.35, z: g.z + 2.8 }, 0.6, 1.0);
+    });
+  } else {
+    pkBallTo(sp, { x: tx, y: ty, z: g.z - 0.1 }, 0.5, 0.25, () => {
+      sp.net = 0.6;
+      if (mine) { Snd.goal(); confetti(35); } else Snd.no();
+      finish(true, mine ? "골!!!" : "골…", mine ? pick(["으아악! 눈 감고 있었는데!", "공이 너무 빨라!", "거미손이 뚫렸다!"]) : pick(["골인! 미안~ 너무 잘 찼지?", "슛, 골! 다음엔 막아 봐!"]));
+      pkBallTo(sp, { x: tx, y: 0.35, z: g.z - 0.75 }, 0.35, 0.05);
+    });
   }
 }
+function pkNext(sp) {
+  endTalk(); $("#spBig").textContent = "";
+  const a = pkCount(sp.me), b = pkCount(sp.cpu);
+  if (!sp.sd) {
+    if (sp.me.length < 5) return pkSetupKick(sp);
+    if (!sp.switched) {
+      sp.switched = true; sp.phase = "switch";
+      pkPanel(sp, `이번엔 내가 골키퍼!<br><small>골대지기가 5번 차요. 공이 올 쪽을 골라 몸을 날려요!</small>`, "", false);
+      $("#spBig").textContent = "공수 교대!";
+      return pkLater(sp, 2.4, () => { $("#spBig").textContent = ""; pkSetupKeep(sp); });
+    }
+    // 남은 차기로 따라잡을 수 없으면 바로 끝나요 (진짜 승부차기처럼)
+    const left = 5 - sp.cpu.length;
+    if (a > b + left || b > a) return pkFinish(sp);
+    if (sp.cpu.length < 5) return pkSetupKeep(sp);
+    if (a !== b) return pkFinish(sp);
+    sp.sd = 1; $("#spBig").textContent = "서든데스!";
+    pkPanel(sp, "동점! 한 번씩 더 차서 승부를 내요.", "", false);
+    return pkLater(sp, 2.2, () => { $("#spBig").textContent = ""; pkSetupKick(sp); });
+  }
+  if (sp.me.length > sp.cpu.length) return pkSetupKeep(sp);
+  if (a !== b || sp.sd >= 3) return pkFinish(sp);
+  sp.sd++;
+  pkSetupKick(sp);
+}
+function pkFinish(sp) {
+  const a = pkCount(sp.me), b = pkCount(sp.cpu), res = a > b ? "win" : a === b ? "draw" : "lose";
+  const stars = res === "win" ? 3 : res === "draw" ? 2 : 1;
+  award("penalty", stars);
+  Snd.star(); confetti(stars * 25);
+  sp.phase = "done";
+  sportMsg(`승부차기 끝! 나 <b>${a}</b> : <b>${b}</b> 골대지기 · ${"★".repeat(stars)}${"☆".repeat(3 - stars)}${pkBoard(sp)}`, res === "win" ? "승리!" : res === "draw" ? "무승부!" : "아쉬워요!");
+  pkSay(sp, res === "win" ? "졌다! 순창 최고의 키커로 인정!" : res === "draw" ? "막상막하! 다음엔 끝장을 내자!" : "흐흐, 거미손의 승리! 다음에 또 오렴.");
+  pkLater(sp, 4.0, () => stopSport());
+}
 function updatePenalty(dt) {
-  const sp = S.sport, g = sp.g, b = sp.ball.body, kb = S.cur.special.keeperBody;
+  const sp = S.sport, g = sp.g, kb = S.cur.special.keeperBody;
   sp.t += dt;
-  if (sp.phase === "aim") { sp.aim = Math.sin(sp.t * 2.4); const el = $("#spAim"); if (el) el.style.left = `${50 + sp.aim * 46}%`; }
-  if (sp.phase === "power") { sp.power = 0.5 - Math.cos(sp.t * 3.2) * 0.5; const el = $("#spPow"); if (el) el.style.width = `${sp.power * 100}%`; }
-  const prev = sp.kx;
-  if (sp.phase === "fly") sp.kx += clamp(sp.kTarget - sp.kx, -6 * dt, 6 * dt);
-  else sp.kx = g.cx + Math.sin(S.T * 1.7) * 0.45;
-  kb.position.set(sp.kx, 0.8, g.z + 0.55);
-  kb.velocity.set((sp.kx - prev) / Math.max(dt, 1e-3), 0, 0);
-  if (sp.keeper) { sp.keeper.pos.set(sp.kx, 0, g.z + 0.55); sp.keeper.face = 0; sp.keeper.moving = sp.phase === "fly" ? 0.6 : 0.2; }
-  if (sp.phase === "fly" && !sp.judged) {
-    const goal = b.position.z < g.z - 0.1 && Math.abs(b.position.x - g.cx) < g.half - 0.08 && b.position.y < 2.0;
-    const stopped = sp.t > 0.9 && b.velocity.length() < 0.6;
-    if (goal || sp.t > 2.6 || stopped) {
-      sp.judged = true;
-      sp.shot++;
-      if (goal) { sp.goals++; Snd.goal(); confetti(30); $("#spBig").textContent = "골!!!"; if (sp.keeper) say(new THREE.Vector3(sp.kx, 2.2, g.z + 0.6), pick(["으아악! 눈 감고 있었는데!", "공이 너무 빨라!", "거미손이 뚫렸다!"]), "골대지기"); }
-      else { Snd.no(); $("#spBig").textContent = Math.abs(b.position.x - g.cx) > g.half + 0.3 || b.position.y > 2.2 ? "아깝다!" : "막았다!"; if (sp.keeper) say(new THREE.Vector3(sp.kx, 2.2, g.z + 0.6), pick(["순창의 거미손이 막았다!", "흐흐, 내 손은 고추장보다 끈끈하지!", "다음엔 반대쪽으로 차 봐!"]), "골대지기"); }
-      setTimeout(() => {
-        if (S.sport !== sp) return;
-        $("#spBig").textContent = "";
-        endTalk();
-        if (sp.shot >= 5) {
-          const stars = starsFor("penalty", sp.goals);
-          award("penalty", stars);
-          if (stars) { Snd.star(); confetti(stars * 25); }
-          sportMsg(`승부차기 끝! 5번 중 <b>${sp.goals}골</b> · ${"★".repeat(stars)}${"☆".repeat(3 - stars)}`, sp.goals >= 4 ? "슈퍼스타!" : "수고했어요!");
-          sp.phase = "done";
-          setTimeout(() => { if (S.sport === sp) stopSport(); }, 3200);
-        } else resetShot();
-      }, 1900);
+  if (sp.wait > 0) { sp.wait -= dt; if (sp.wait <= 0 && sp.next) { const f = sp.next; sp.next = null; f(); if (S.sport !== sp) return; } }
+  // 내가 찰 때: 공 쪽으로 달려가서 차요. 골키퍼는 그 순간 방향을 골라 몸을 날려요.
+  if (sp.role === "kick" && sp.phase === "runup") {
+    const k = Math.min(1, sp.t / 0.4);
+    pBody.position.set(g.cx - 0.9 + 0.55 * k, 0.08, g.spot + 1.1 - 0.65 * k); pBody.velocity.set(0, 0, 0);
+    player.moveAmt = 1;
+    if (k >= 1) {
+      const side = pkWorld(sp, sp.pick);
+      // 골대지기는 내가 자주 찬 쪽을 노리거나(눈치), 아니면 좌우 중 하나로 몸을 날려요
+      let guess;
+      if (sp.hist.length >= 2 && Math.random() < 0.45) { const c = { "-1": 0, "0": 0, "1": 0 }; sp.hist.forEach((h) => c[h]++); const mx = Math.max(...Object.values(c)); const top = [-1, 0, 1].filter((v) => c[v] === mx); guess = top[Math.floor(Math.random() * top.length)]; }
+      else { const r = Math.random(); guess = r < 0.4 ? -1 : r < 0.6 ? 0 : 1; }
+      sp.hist.push(side);
+      pkShoot(sp, side, guess);
     }
   }
+  // 내가 막을 때: 골대지기가 달려와서 차요
+  if (sp.role === "keep" && sp.phase === "ready" && sp.keeper) {
+    const k = clamp((sp.t - (sp.runT - 0.6)) / 0.6, 0, 1);
+    sp.keeper.pos.set(g.cx + 0.9 - 0.55 * k, 0, g.spot + 1.6 - 1.15 * k); sp.keeper.moving = k > 0 && k < 1 ? 1 : 0;
+    if (sp.t >= sp.runT) {
+      let side;
+      if (sp.keepHist.length && Math.random() < 0.5) { const last = sp.keepHist[sp.keepHist.length - 1], opts = [-1, 0, 1].filter((v) => v !== last); side = opts[Math.floor(Math.random() * opts.length)]; }
+      else { const r = Math.random(); side = r < 0.38 ? -1 : r < 0.62 ? 0 : 1; }
+      const dive = pkWorld(sp, sp.pick === null ? 0 : sp.pick);
+      sp.keepHist.push(dive);
+      pkShoot(sp, side, dive);
+    }
+  }
+  // 공 날아가기 (포물선) + 회전
+  if (sp.seg) {
+    const s0 = sp.seg; s0.t += dt;
+    const u = Math.min(1, s0.t / s0.T), x = s0.p0.x + (s0.p1.x - s0.p0.x) * u, z = s0.p0.z + (s0.p1.z - s0.p0.z) * u, y = s0.p0.y + (s0.p1.y - s0.p0.y) * u + Math.sin(Math.PI * u) * s0.apex;
+    pkBallAt(sp, x, y, z); sp.ball.mesh.rotation.x -= dt * 16;
+    if (u >= 1) { sp.seg = null; if (s0.onEnd) s0.onEnd(); }
+  }
+  // 몸 날리기
+  if (sp.dive) {
+    sp.dive.t += dt;
+    const k = clamp(sp.dive.t / 0.3, 0, 1), who = sp.role === "kick" ? sp.keeper : player;
+    if (who) {
+      const off = pkPose(who, sp.dive.side, k);
+      if (sp.role === "kick") who.pos.x = g.cx + off; else { pBody.position.x = g.cx + off; pBody.velocity.set(0, 0, 0); }
+    }
+  } else if (sp.role === "kick" && sp.keeper && sp.phase === "aim") sp.keeper.pos.x = g.cx + Math.sin(S.T * 2.2) * 0.35;
+  // 골 그물 출렁
+  const net = S.cur.special.goalNet;
+  if (net) { if (net.userData.z0 === undefined) net.userData.z0 = net.position.z; sp.net = Math.max(0, sp.net - dt); net.position.z = net.userData.z0 - Math.sin((sp.net / 0.6) * Math.PI) * 0.35; }
+  if (kb && sp.keeper) kb.position.set(sp.keeper.pos.x, 0.8, sp.keeper.pos.z);
 }
 function stopSport() {
   const sp = S.sport;
   if (!sp) return;
   if (sp.type === "race") { B.setSkates(player.avatar, false); for (const r of sp.rings) { S.cur.group.remove(r.m); r.m.geometry.dispose(); r.m.material.dispose(); } if (sp.gp) { sp.gp.racing = false; sp.gp.pos.set(sp.gp.d.pos[0], 0, sp.gp.d.pos[1]); } }
-  if (sp.type === "penalty" && sp.keeper) sp.keeper.pos.set(sp.keeper.d.pos[0], 0, sp.keeper.d.pos[1]);
+  if (sp.type === "penalty") {
+    if (sp.keeper) { sp.keeper.pos.set(sp.keeper.d.pos[0], 0, sp.keeper.d.pos[1]); sp.keeper.face = sp.keeper.d.face ?? 0; Object.assign(sp.keeper, { roll: 0, raise: 0, air: false }); }
+    const b = sp.ball.body; b.type = CANNON.Body.DYNAMIC; b.position.set(sp.g.cx + 2.5, 0.35, sp.g.spot + 2); b.velocity.set(0, 0, 0); b.wakeUp();
+    const net = S.cur.special.goalNet; if (net && net.userData.z0 !== undefined) net.position.z = net.userData.z0;
+    Object.assign(player, { roll: 0, raise: 0, air: false });
+    endTalk();
+  }
   S.sport = null;
   showMarkers(true);
   sportUI.hidden = true;
@@ -764,6 +894,7 @@ addEventListener("keydown", (e) => {
   }
   const k = KEYMAP[e.code];
   if (k) { K[k] = true; e.preventDefault(); }
+  if (S.sport && S.sport.type === "penalty" && k && !e.repeat) pkPick(k === "left" ? -1 : k === "right" ? 1 : 0);
   if (e.code === "Space") { e.preventDefault(); if (document.activeElement && document.activeElement.tagName === "BUTTON") document.activeElement.blur(); if (S.sport && S.sport.type === "penalty") { if (!e.repeat) sportAction(); } else if (!e.repeat) player.jumpBuf = 0.15; }
   if (e.code === "KeyF" && !e.repeat) act();
   if (e.code === "Enter" && !e.repeat && S.talk) act();
@@ -889,7 +1020,12 @@ function updateCamera(dt) {
     const v = pBody.velocity;
     if (Math.hypot(v.x, v.z) > 2) cam.yaw = angDamp(cam.yaw, Math.atan2(v.x, v.z) + Math.PI, 2.2, dt);
   }
-  if (S.sport && S.sport.type === "penalty") { const g = S.sport.g; tx = g.cx; tz = g.spot - 2.6; ty = 1.0; cam.yaw = angDamp(cam.yaw, 0.28, 6, dt); cam.pitch = damp(cam.pitch, 0.38, 6, dt); dist = 9; }
+  if (S.sport && S.sport.type === "penalty") {
+    const g = S.sport.g;
+    // 골키퍼일 때: 골대 위쪽 뒤에서 내 어깨 너머로 키커를 내려다봐요 (벽과 골대에 가리지 않게)
+    if (S.sport.role === "keep") { tx = g.cx; tz = g.z + 2.5; ty = 1.0; cam.yaw = angDamp(cam.yaw, Math.PI, 5, dt); cam.pitch = damp(cam.pitch, 0.6, 5, dt); dist = 6.2; }
+    else { tx = g.cx; tz = g.spot - 2.6; ty = 1.0; cam.yaw = angDamp(cam.yaw, 0.28, 6, dt); cam.pitch = damp(cam.pitch, 0.38, 6, dt); dist = 9; }
+  }
   cam.target.set(damp(cam.target.x, tx, 12, dt), damp(cam.target.y, ty, 7, dt), damp(cam.target.z, tz, 12, dt));
   const cp = Math.cos(cam.pitch);
   _des.set(cam.target.x + Math.sin(cam.yaw) * cp * dist, cam.target.y + Math.sin(cam.pitch) * dist, cam.target.z + Math.cos(cam.yaw) * cp * dist);
@@ -905,6 +1041,7 @@ function updateCamera(dt) {
   cam.cur = want < cam.cur ? want : damp(cam.cur, want, 4, dt);
   camera.position.copy(cam.target).addScaledVector(_dir, cam.cur);
   if (camera.position.y < 0.5) camera.position.y = 0.5;
+  if (S.shake > 0) { S.shake = Math.max(0, S.shake - dt); camera.position.x += (Math.random() - 0.5) * S.shake; camera.position.y += (Math.random() - 0.5) * S.shake; }
   camera.lookAt(cam.target);
   // indoor: walls between the camera and the player turn see-through
   for (const m of faded) m.material = m.userData.orig;
@@ -995,8 +1132,10 @@ function updateNPCs(dt) {
     if (dP < rad && dP > 0.001 && Math.abs(p.y - n.pos.y) < 1.5) { const push = (rad - dP) / dP; pBody.position.x += (p.x - n.pos.x) * push; pBody.position.z += (p.z - n.pos.z) * push; }
     n.avatar.position.copy(n.pos);
     if (n.d.skates) n.avatar.position.y += B.SKATE_LIFT;
+    n.avatar.position.y += n.raise || 0;
     n.avatar.rotation.y = n.face;
-    B.animateAvatar(n.avatar, S.T + n.phase, n.moving, false, dt);
+    n.avatar.rotation.z = n.roll || 0;
+    B.animateAvatar(n.avatar, S.T + n.phase, n.moving, !!n.air, dt);
   }
 }
 
@@ -1018,7 +1157,7 @@ function updateOverlays() {
   }
   let text = null;
   if (play && !S.modal) {
-    if (S.sport) text = S.sport.type === "penalty" && (S.sport.phase === "aim" || S.sport.phase === "power") ? (S.sport.phase === "aim" ? "조준 고정" : "슛!") : null;
+    if (S.sport) { const sp = S.sport; text = sp.type === "penalty" && sp.role === "kick" && sp.phase === "aim" ? "가운데로 슛" : sp.type === "penalty" && sp.role === "keep" && sp.phase === "ready" && sp.pick === null ? "가운데 지키기" : null; }
     else if (S.talk) text = S.typing ? "말 다 듣기" : S.talk.i >= S.talk.lines.length - 1 ? "닫기" : "다음 이야기";
     else { const it = findInteract(); if (it) text = `${it.label} · ${it.verb}`; }
   }
@@ -1105,10 +1244,11 @@ function frame(now) {
   updateNPCs(dt);
   if (S.mode === "play") triggers(dt);
   const p = pBody.position;
-  player.avatar.position.set(p.x, p.y + (player.avatar.userData.skates ? B.SKATE_LIFT : 0), p.z);
+  player.avatar.position.set(p.x, p.y + (player.avatar.userData.skates ? B.SKATE_LIFT : 0) + (player.raise || 0), p.z);
   player.avatar.rotation.y = player.face;
+  player.avatar.rotation.z = player.roll || 0;
   player.avatar.userData.dance = false;
-  B.animateAvatar(player.avatar, S.T, player.moveAmt, !player.grounded, dt);
+  B.animateAvatar(player.avatar, S.T, player.moveAmt, !player.grounded || !!player.air, dt);
   S.roomCheck -= dt;
   if (S.mode === "play" && S.roomCheck <= 0 && !S.busy) {
     S.roomCheck = 0.15;
@@ -1121,7 +1261,9 @@ function frame(now) {
   sun.target.position.set(p.x, p.y, p.z);
   sky.position.copy(camera.position);
   updateOverlays();
-  renderer.render(scene, camera);
+  // 2D 미니게임 창이 열려 있으면 뒤의 3D 화면은 한 번만 그려 두고 쉬어요 (느린 태블릿에서도 박자가 밀리지 않게)
+  if (S.modal !== "mg" || !S.mgDrawn) renderer.render(scene, camera);
+  S.mgDrawn = S.modal === "mg";
   requestAnimationFrame(frame);
 }
 addEventListener("resize", () => { fitFov(); renderer.setSize(innerWidth, innerHeight); });

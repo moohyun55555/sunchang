@@ -244,23 +244,26 @@ export function setHat(av, hat, color = "#ffc93c") {
   }
   av.userData.hat = hat;
 }
-// 롤러스케이트: 다리 끝에 신발과 바퀴를 달아요. 신은 동안은 캐릭터를 SKATE_LIFT만큼 띄워야 바퀴가 바닥에 닿아요.
+// 인라인 스케이트: 다리 끝에 목이 높은 부츠와 한 줄로 늘어선 바퀴 4개를 달아요. 신은 동안은 캐릭터를 SKATE_LIFT만큼 띄워야 바퀴가 바닥에 닿아요.
 export const SKATE_LIFT = 0.2 * AV_SCALE;
 export function setSkates(av, on, color = "#ff4fa3") {
   const u = av.userData;
   if (!!u.skates === on) return;
   if (!on) { for (const g of u.skates) g.parent.remove(g); u.skates = null; return; }
   u.skates = [];
+  const wheelGeo = new THREE.CylinderGeometry(0.075, 0.075, 0.06, 14), wheelM = mat("#ffd400"), hubM = mat("#334155");
   for (const name of ["legL", "legR"]) {
     const g = new THREE.Group(); g.position.set(0, -0.72, 0);
     const P = { group: g };
-    bx(P, 0.44, 0.26, 0.52, color, 0, -0.02, 0.06, { parent: g });
-    bx(P, 0.46, 0.06, 0.08, "#ffffff", 0, 0.2, 0.06, { parent: g });
-    bx(P, 0.32, 0.05, 0.6, "#cbd5e1", 0, -0.08, 0.06, { parent: g });
-    bx(P, 0.14, 0.1, 0.1, "#ef4444", 0, -0.12, 0.38, { parent: g });
-    for (const z of [-0.14, 0.26]) for (const sx of [-1, 1]) {
-      const w = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.1, 12), mat("#ffd400"));
-      w.rotation.z = Math.PI / 2; w.position.set(sx * 0.15, -0.12, z); w.castShadow = true; g.add(w);
+    bx(P, 0.42, 0.36, 0.5, color, 0, -0.02, 0.05, { parent: g });
+    bx(P, 0.44, 0.05, 0.1, "#ffffff", 0, 0.24, 0.05, { parent: g });
+    bx(P, 0.44, 0.05, 0.1, "#ffffff", 0, 0.1, 0.12, { parent: g });
+    bx(P, 0.4, 0.04, 0.56, "#1e293b", 0, -0.05, 0.06, { parent: g });
+    bx(P, 0.09, 0.08, 0.62, "#cbd5e1", 0, -0.12, 0.04, { parent: g });
+    bx(P, 0.1, 0.1, 0.1, "#111827", 0, -0.2, -0.33, { parent: g });
+    for (const z of [-0.22, -0.075, 0.075, 0.22]) {
+      const w = new THREE.Mesh(wheelGeo, wheelM); w.rotation.z = Math.PI / 2; w.position.set(0, -0.12, z + 0.04); w.castShadow = true; g.add(w);
+      const hub = new THREE.Mesh(boxGeo(0.065, 0.03, 0.03), hubM); hub.position.set(0, -0.12, z + 0.04); g.add(hub);
     }
     u.limbs[name].add(g);
     u.skates.push(g);
@@ -351,6 +354,7 @@ function gameMarker(ctx, x, z) {
   ctx.markers.push(cube, ring);
 }
 function plant(ctx, x, z, s = 1) {
+  if (blocked(ctx, x, z, 0.35)) return; // 문 앞이나 퀴즈 자리라면 화분을 놓지 않아요
   bx(ctx, 0.5 * s, 0.45 * s, 0.5 * s, "#c56a3a", x, 0, z, { solid: true });
   const b = new THREE.Mesh(new THREE.SphereGeometry(0.42 * s, 12, 10), mat("#38b356"));
   b.position.set(x, 0.75 * s, z); b.castShadow = true; ctx.group.add(b);
@@ -672,8 +676,8 @@ const FURNISH = {
       chair(ctx, x0 + 3.1, z + 0.8, Math.PI, "#ff6b8b"); chair(ctx, x0 + 4.2, z + 0.8, Math.PI, "#ff6b8b");
     }
     // clothes rack
-    item(ctx, x1 - 0.6, z0 + 3.0, -Math.PI / 2, (g, add) => { add(2.4, 0.06, 0.06, "#888", 0, 1.7, 0); add(0.06, 1.7, 0.06, "#888", -1.15, 0, 0); add(0.06, 1.7, 0.06, "#888", 1.15, 0, 0); ["#ff6b8b", "#ffd91a", "#2fb2ff", "#3fd16f", "#9b7bff", "#ff9a1a"].forEach((c, i) => add(0.3, 0.8, 0.06, c, -0.9 + i * 0.36, 0.85, 0)); });
-    staticBody(ctx, x1 - 0.6, 1, z0 + 3.0, 0.5, 2, 2.4);
+    item(ctx, x1 - 2.0, z1 - 0.5, Math.PI, (g, add) => { add(2.4, 0.06, 0.06, "#888", 0, 1.7, 0); add(0.06, 1.7, 0.06, "#888", -1.15, 0, 0); add(0.06, 1.7, 0.06, "#888", 1.15, 0, 0); ["#ff6b8b", "#ffd91a", "#2fb2ff", "#3fd16f", "#9b7bff", "#ff9a1a"].forEach((c, i) => add(0.3, 0.8, 0.06, c, -0.9 + i * 0.36, 0.85, 0)); });
+    staticBody(ctx, x1 - 2.0, 1, z1 - 0.5, 2.4, 2, 0.5);
     item(ctx, x0 + 0.2, z1 - 1.5, Math.PI / 2, (g, add) => { add(1.2, 1.9, 0.06, "#cfe8ff", 0, 0.1, 0); add(1.3, 2.0, 0.04, "#26355e", 0, 0.05, -0.04); });
   },
   chroma(ctx, r) {
@@ -821,8 +825,10 @@ const FURNISH = {
   },
   perform(ctx, r) {
     const [x0, x1, z0, z1] = r.rect;
-    item(ctx, (x0 + x1) / 2, (z0 + z1) / 2 + 0.6, Math.PI / 2, (g, add) => { add(2.8, 0.08, 1.0, "#f2e6d0", 0, 0.7, 0, true); add(0.1, 0.7, 0.8, "#555", -1.2, 0, 0); add(0.1, 0.7, 0.8, "#555", 1.2, 0, 0); });
-    for (const dz of [-0.6, 0.6, 1.6]) { chair(ctx, (x0 + x1) / 2 - 0.8, (z0 + z1) / 2 + dz, Math.PI / 2, "#ff6b8b"); chair(ctx, (x0 + x1) / 2 + 0.8, (z0 + z1) / 2 + dz, -Math.PI / 2, "#ff6b8b"); }
+    // 문에서 들어와 오른쪽 길로 옷걸이까지 갈 수 있게, 탁자는 짧게 왼쪽으로 붙이고 의자는 한쪽만
+    const tx = (x0 + x1) / 2 - 0.45, tz = (z0 + z1) / 2 + 0.1;
+    item(ctx, tx, tz, Math.PI / 2, (g, add) => { add(2.2, 0.08, 0.9, "#f2e6d0", 0, 0.7, 0, true); add(0.1, 0.7, 0.7, "#555", -0.95, 0, 0); add(0.1, 0.7, 0.7, "#555", 0.95, 0, 0); });
+    for (const dz of [-0.5, 0.5]) chair(ctx, tx - 0.75, tz + dz, Math.PI / 2, "#ff6b8b");
     item(ctx, (x0 + x1) / 2, z0 + 0.5, 0, (g, add) => { add(2.4, 0.06, 0.06, "#888", 0, 1.7, 0); add(0.06, 1.7, 0.06, "#888", -1.15, 0, 0); add(0.06, 1.7, 0.06, "#888", 1.15, 0, 0); ["#ffd400", "#ff4fa3", "#ffffff", "#1f1f1f", "#ffe135"].forEach((c, i) => add(0.3, 0.3, 0.3, c, -0.8 + i * 0.4, 1.2, 0)); });
     staticBody(ctx, (x0 + x1) / 2, 1, z0 + 0.5, 2.4, 2, 0.4);
   },
@@ -903,6 +909,7 @@ const FURNISH = {
       bx(ctx, 0.12, 2.0, 0.12, post, cx + 1.55, 0, gz, { solid: true });
       bx(ctx, 3.22, 0.12, 0.12, post, cx, 2.0, gz);
       const net = bx(ctx, 3.1, 2.0, 0.05, new THREE.MeshStandardMaterial({ color: "#ffffff", transparent: true, opacity: 0.35 }), cx, 0, gz - dir * 1.0, { shadow: false });
+      if (dir === 1) ctx.special.goalNet = net;
       staticBody(ctx, cx, 1.0, gz - dir * 1.0, 3.1, 2.0, 0.1);
       staticBody(ctx, cx - 1.55, 1.0, gz - dir * 0.5, 0.1, 2.0, 1.0);
       staticBody(ctx, cx + 1.55, 1.0, gz - dir * 0.5, 0.1, 2.0, 1.0);
